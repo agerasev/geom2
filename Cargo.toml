@@ -1,0 +1,16 @@
+[package]
+name = "phy-geom2"
+version = "0.1.0"
+edition.workspace = true
+description = "2D geometry primitives and utilities"
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/phy-geom2"
+
+[dependencies]
+glam.workspace = true
+
+[dev-dependencies]
+approx = "0.5.1"
