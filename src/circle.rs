@@ -1,4 +1,4 @@
-use crate::{Clump, HalfPlane, Intersect, Shape};
+use crate::{Clump, HalfPlane, Intersect, Location, Shape};
 use core::f32::consts::PI;
 use glam::Vec2;
 
@@ -11,6 +11,10 @@ pub struct Circle {
 }
 
 impl Shape for Circle {
+    fn locate(&self, point: Vec2) -> crate::Location {
+        Location::from_distance((self.center - point).length_squared() - self.radius.powi(2))
+    }
+
     fn clump(&self) -> Clump {
         Clump {
             centroid: self.center,

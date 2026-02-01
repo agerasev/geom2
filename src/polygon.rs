@@ -1,6 +1,6 @@
 use glam::Vec2;
 
-use crate::{Clump, Shape};
+use crate::{Clump, HalfPlane, Location, Shape};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Polygon<V: AsRef<[Vec2]> + ?Sized> {
@@ -23,6 +23,10 @@ impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
 }
 
 impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
+    fn locate(&self, point: Vec2) -> Location {
+        unimplemented!()
+    }
+
     fn clump(&self) -> Clump {
         // Shoelace formula
         let vertices = self.vertices();
@@ -37,6 +41,20 @@ impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
         area = area.abs() * 0.5;
         centroid /= 6.0 * area;
         Clump { area, centroid }
+    }
+}
+
+impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
+    /// Returns a new polygon resulting from intersection with the half-plane.
+    pub fn clip<U: AsRef<[Vec2]> + FromIterator<Vec2>>(plane: HalfPlane) -> Polygon<U> {
+        unimplemented!()
+    }
+
+    pub fn intersect_polygon<W: AsRef<[Vec2]> + ?Sized, U: AsRef<[Vec2]> + FromIterator<Vec2>>(
+        &self,
+        other: &Polygon<W>,
+    ) -> Polygon<U> {
+        unimplemented!()
     }
 }
 
