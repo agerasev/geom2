@@ -1,4 +1,4 @@
-use crate::{HalfPlane, Intersect, Intersection, Shape};
+use crate::{Clump, HalfPlane, Intersect, Shape};
 use core::f32::consts::PI;
 use glam::Vec2;
 
@@ -10,7 +10,14 @@ pub struct Circle {
     pub radius: f32,
 }
 
-impl Shape for Circle {}
+impl Shape for Circle {
+    fn clump(&self) -> Clump {
+        Clump {
+            centroid: self.center,
+            area: PI * self.radius.powi(2),
+        }
+    }
+}
 
 /// Circle segment
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -53,18 +60,18 @@ fn circle_segment(radius: f32, dist: f32) -> Segment {
 }
 
 impl Intersect<Circle> for HalfPlane {
-    fn intersect(&self, circle: &Circle) -> Option<Intersection> {
+    fn intersect(&self, circle: &Circle) -> Option<Clump> {
         let plane = self;
         let dist = circle.center.dot(plane.normal) - plane.offset;
         if dist < circle.radius {
             if dist > -circle.radius {
                 let segment = circle_segment(circle.radius, dist);
-                Some(Intersection {
+                Some(Clump {
                     area: segment.area,
                     centroid: circle.center - plane.normal * segment.offset,
                 })
             } else {
-                Some(Intersection {
+                Some(Clump {
                     area: PI * circle.radius.powi(2),
                     centroid: circle.center,
                 })
@@ -76,13 +83,13 @@ impl Intersect<Circle> for HalfPlane {
 }
 
 impl Intersect<HalfPlane> for Circle {
-    fn intersect(&self, other: &HalfPlane) -> Option<Intersection> {
+    fn intersect(&self, other: &HalfPlane) -> Option<Clump> {
         other.intersect(self)
     }
 }
 
 impl Intersect<Circle> for Circle {
-    fn intersect(&self, other: &Circle) -> Option<Intersection> {
+    fn intersect(&self, other: &Circle) -> Option<Clump> {
         // Vector pointing from `self.center` to `other.center`
         let vec = other.center - self.center;
         // Distance between the centers of the circles
@@ -100,7 +107,7 @@ impl Intersect<Circle> for Circle {
                 let other_segment = circle_segment(other.radius, other_offset);
 
                 let area = self_segment.area + other_segment.area;
-                Some(Intersection {
+                Some(Clump {
                     area,
                     centroid: ((self.center + dir * self_segment.offset) * self_segment.area
                         + (other.center - dir * other_segment.offset) * other_segment.area)
@@ -112,7 +119,7 @@ impl Intersect<Circle> for Circle {
                 } else {
                     (other.radius, other.center)
                 };
-                Some(Intersection {
+                Some(Clump {
                     area: PI * minr.powi(2),
                     centroid: minc,
                 })

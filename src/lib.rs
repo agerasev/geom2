@@ -1,18 +1,32 @@
 mod circle;
+mod polygon;
 
-pub use circle::Circle;
+pub use self::{circle::Circle, polygon::Polygon};
 
+use core::f32;
 use glam::Vec2;
 
-pub trait Shape {}
+/// Specific geometric shape.
+pub trait Shape {
+    fn clump(&self) -> Clump;
+    fn area(&self) -> f32 {
+        self.clump().area
+    }
+    fn centroid(&self) -> Vec2 {
+        self.clump().centroid
+    }
+}
 
-pub struct Intersection {
+/// Abstract shape without an exact form.
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
+pub struct Clump {
     pub centroid: Vec2,
     pub area: f32,
 }
 
 pub trait Intersect<T: Shape + Intersect<Self> + ?Sized>: Shape {
-    fn intersect(&self, other: &T) -> Option<Intersection>;
+    /// Abstract intersection of two shapes.
+    fn intersect(&self, other: &T) -> Option<Clump>;
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -25,4 +39,11 @@ pub struct HalfPlane {
     pub offset: f32,
 }
 
-impl Shape for HalfPlane {}
+impl Shape for HalfPlane {
+    fn clump(&self) -> Clump {
+        Clump {
+            centroid: Vec2::INFINITY,
+            area: f32::INFINITY,
+        }
+    }
+}
