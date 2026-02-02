@@ -1,4 +1,4 @@
-use crate::{Clump, Location, Shape};
+use crate::{Clump, Line, Shape};
 use glam::Vec2;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -30,11 +30,21 @@ impl HalfPlane {
     pub fn distance(&self, point: Vec2) -> f32 {
         point.dot(self.normal) - self.offset
     }
+
+    /// Get some point on the boundary line
+    fn boundary_point(&self) -> Vec2 {
+        self.normal * (-self.offset)
+    }
+
+    pub fn edge(&self) -> Line {
+        let p = self.boundary_point();
+        Line(p, p + self.normal.perp())
+    }
 }
 
 impl Shape for HalfPlane {
-    fn locate(&self, point: Vec2) -> Location {
-        Location::from_distance(self.distance(point))
+    fn is_inside(&self, point: Vec2) -> bool {
+        self.distance(point) <= 0.0
     }
 
     fn clump(&self) -> Clump {
@@ -42,5 +52,22 @@ impl Shape for HalfPlane {
             centroid: Vec2::INFINITY,
             area: f32::INFINITY,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_inside() {
+        let plane = HalfPlane::from_edge(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0));
+
+        // Points below the edge (y < 0) should be inside
+        assert!(plane.is_inside(Vec2::new(0.0, -1.0)));
+        // Points above the edge (y > 0) should be outside
+        assert!(!plane.is_inside(Vec2::new(0.0, 1.0)));
+        // Points on the edge should be inside
+        assert!(plane.is_inside(Vec2::new(0.5, 0.0)));
     }
 }

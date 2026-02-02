@@ -1,8 +1,6 @@
-use crate::{Clump, HalfPlane, Intersect, Location, Shape};
+use crate::{Clump, HalfPlane, Intersect, Shape};
 use core::f32::consts::PI;
 use glam::Vec2;
-
-const EPS: f32 = 1e-4;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Circle {
@@ -11,8 +9,8 @@ pub struct Circle {
 }
 
 impl Shape for Circle {
-    fn locate(&self, point: Vec2) -> crate::Location {
-        Location::from_distance((self.center - point).length_squared() - self.radius.powi(2))
+    fn is_inside(&self, point: Vec2) -> bool {
+        (self.center - point).length_squared() <= self.radius.powi(2)
     }
 
     fn clump(&self) -> Clump {
@@ -23,53 +21,55 @@ impl Shape for Circle {
     }
 }
 
-/// Circle segment
 #[derive(Clone, Copy, PartialEq, Debug)]
-struct Segment {
+struct CircleSegment {
     /// Area of the segment
     area: f32,
     /// Offset from the circle center
     offset: f32,
 }
 
-/// For given unit circle chord returns segment area and centroid offset.
-///
-/// Chord is defined via distance from circle center.
-fn unit_circle_segment(dist: f32) -> Segment {
-    let cosine = dist.clamp(-1.0, 1.0);
-    let sine = (1.0 - cosine.powi(2)).sqrt();
-    let (area, offset) = if cosine.abs() < 1.0 - EPS {
-        let area = cosine.acos() - cosine * sine;
-        (area, (2.0 / 3.0) * sine.powi(3) / area)
-    } else {
-        // Approximate circle by parabola
-        let y = 1.0 - cosine.abs();
-        let a = (4.0 / 3.0) * (2.0 * y).sqrt() * y;
-        let b = 1.0 - (3.0 / 10.0) * y;
-        if cosine > 0.0 {
-            (a, b)
+impl CircleSegment {
+    /// For given unit circle chord returns segment area and centroid offset.
+    ///
+    /// Chord is defined via distance from circle center.
+    fn new_unit(dist: f32) -> CircleSegment {
+        let cosine = dist.clamp(-1.0, 1.0);
+        let sine = (1.0 - cosine.powi(2)).sqrt();
+        let (area, offset) = if cosine.abs() < 1.0 - 1e-4 {
+            let area = cosine.acos() - cosine * sine;
+            (area, (2.0 / 3.0) * sine.powi(3) / area)
         } else {
-            (PI - a, -b * a / (PI - a))
-        }
-    };
-    Segment { area, offset }
-}
+            // Approximate circle by parabola
+            let y = 1.0 - cosine.abs();
+            let a = (4.0 / 3.0) * (2.0 * y).sqrt() * y;
+            let b = 1.0 - (3.0 / 10.0) * y;
+            if cosine > 0.0 {
+                (a, b)
+            } else {
+                (PI - a, -b * a / (PI - a))
+            }
+        };
+        CircleSegment { area, offset }
+    }
 
-fn circle_segment(radius: f32, dist: f32) -> Segment {
-    let Segment { area, offset } = unit_circle_segment(dist / radius);
-    Segment {
-        area: area * radius.powi(2),
-        offset: offset * radius,
+    fn new(radius: f32, dist: f32) -> CircleSegment {
+        let CircleSegment { area, offset } = Self::new_unit(dist / radius);
+        CircleSegment {
+            area: area * radius.powi(2),
+            offset: offset * radius,
+        }
     }
 }
 
 impl Intersect<Circle> for HalfPlane {
+    type Output = Clump;
     fn intersect(&self, circle: &Circle) -> Option<Clump> {
         let plane = self;
         let dist = circle.center.dot(plane.normal) - plane.offset;
         if dist < circle.radius {
             if dist > -circle.radius {
-                let segment = circle_segment(circle.radius, dist);
+                let segment = CircleSegment::new(circle.radius, dist);
                 Some(Clump {
                     area: segment.area,
                     centroid: circle.center - plane.normal * segment.offset,
@@ -87,12 +87,14 @@ impl Intersect<Circle> for HalfPlane {
 }
 
 impl Intersect<HalfPlane> for Circle {
+    type Output = Clump;
     fn intersect(&self, other: &HalfPlane) -> Option<Clump> {
         other.intersect(self)
     }
 }
 
 impl Intersect<Circle> for Circle {
+    type Output = Clump;
     fn intersect(&self, other: &Circle) -> Option<Clump> {
         // Vector pointing from `self.center` to `other.center`
         let vec = other.center - self.center;
@@ -107,8 +109,8 @@ impl Intersect<Circle> for Circle {
                     0.5 * (dist + (self.radius.powi(2) - other.radius.powi(2)) / dist);
                 let other_offset = dist - self_offset;
 
-                let self_segment = circle_segment(self.radius, self_offset);
-                let other_segment = circle_segment(other.radius, other_offset);
+                let self_segment = CircleSegment::new(self.radius, self_offset);
+                let other_segment = CircleSegment::new(other.radius, other_offset);
 
                 let area = self_segment.area + other_segment.area;
                 Some(Clump {
@@ -144,8 +146,8 @@ mod tests {
     #[test]
     fn empty_segment() {
         assert_eq!(
-            circle_segment(R, R),
-            Segment {
+            CircleSegment::new(R, R),
+            CircleSegment {
                 area: 0.0,
                 offset: R
             }
@@ -155,8 +157,8 @@ mod tests {
     #[test]
     fn full_segment() {
         assert_eq!(
-            circle_segment(R, -R),
-            Segment {
+            CircleSegment::new(R, -R),
+            CircleSegment {
                 area: PI * R.powi(2),
                 offset: 0.0
             }
@@ -165,7 +167,7 @@ mod tests {
 
     #[test]
     fn half_segment() {
-        assert_eq!(circle_segment(R, 0.0).area, PI * R.powi(2) / 2.0);
+        assert_eq!(CircleSegment::new(R, 0.0).area, PI * R.powi(2) / 2.0);
     }
 
     #[test]
@@ -185,12 +187,12 @@ mod tests {
             moment += d_area * (x + 0.5 * dx);
             if x >= last_check + check_step {
                 last_check = x;
-                let ref_segment = circle_segment(1.0, (1.0 - x) as f32);
-                assert_abs_diff_eq!(ref_segment.area, area as f32, epsilon = EPS);
+                let ref_segment = CircleSegment::new(1.0, (1.0 - x) as f32);
+                assert_abs_diff_eq!(ref_segment.area, area as f32, epsilon = 1e-4);
                 assert_abs_diff_eq!(
                     ref_segment.offset,
                     1.0 - (moment / area) as f32,
-                    epsilon = EPS
+                    epsilon = 1e-4
                 );
             }
             x += dx;

@@ -1,17 +1,27 @@
 mod circle;
-mod half_plane;
-mod polygon;
+mod line;
+mod plane;
+//mod polygon;
 
-pub use self::{circle::Circle, half_plane::HalfPlane, polygon::Polygon};
+pub use self::{
+    circle::Circle,
+    line::{Line, LineSegment},
+    plane::HalfPlane,
+    //polygon::Polygon,
+};
 
-use core::{cmp::Ordering, f32};
+use core::f32;
 use glam::Vec2;
 
 /// Specific geometric shape.
 pub trait Shape {
     // fn bounding_box(&self) -> (Vec2, Vec2);
 
-    fn locate(&self, point: Vec2) -> Location;
+    /// Check that the `point` is inside the shape.
+    ///
+    /// Shape is considered to be closed rather than open.
+    /// That means the boundary points is inside the shape.
+    fn is_inside(&self, point: Vec2) -> bool;
 
     fn clump(&self) -> Clump;
     fn area(&self) -> f32 {
@@ -22,24 +32,6 @@ pub trait Shape {
     }
 }
 
-/// Point location relative to the shape
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Location {
-    Inside,
-    AtEdge,
-    Outside,
-}
-
-impl Location {
-    pub fn from_distance(distance: f32) -> Self {
-        match distance.partial_cmp(&0.0).unwrap() {
-            Ordering::Less => Location::Inside,
-            Ordering::Equal => Location::AtEdge,
-            Ordering::Greater => Location::Outside,
-        }
-    }
-}
-
 /// Abstract shape without an exact form.
 #[derive(Clone, Copy, Default, PartialEq, Debug)]
 pub struct Clump {
@@ -47,7 +39,8 @@ pub struct Clump {
     pub area: f32,
 }
 
-pub trait Intersect<T: Shape + Intersect<Self> + ?Sized>: Shape {
-    /// Abstract intersection of two shapes.
-    fn intersect(&self, other: &T) -> Option<Clump>;
+pub trait Intersect<T: Intersect<Self> + ?Sized> {
+    type Output: Sized;
+    /// Abstract intersection of two figures.
+    fn intersect(&self, other: &T) -> Option<Self::Output>;
 }
