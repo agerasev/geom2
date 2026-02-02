@@ -7,7 +7,7 @@ pub struct HalfPlane {
     pub normal: Vec2,
     /// Signed distance from the origin to the edge of the half-plane.
     ///
-    /// If the origin is inside then it is positive, when origin is outside then it is negative.
+    /// If the origin is inside then it is negative, when origin is outside then it is positive.
     pub offset: f32,
 }
 
@@ -22,13 +22,13 @@ impl HalfPlane {
 
     /// Construct from two points lying on edge.
     ///
-    /// When looking from the first point to the second one, then the left side is free (outside) and the right side is occupied (inside).
+    /// When looking from the first point to the second one, then the left side is occupied (inside) and the right side is free (outside).
     pub fn from_edge(a: Vec2, b: Vec2) -> Self {
-        Self::from_normal(a, (b - a).perp().normalize())
+        Self::from_normal(a, (a - b).perp().normalize())
     }
 
     pub fn distance(&self, point: Vec2) -> f32 {
-        point.dot(self.normal) - self.offset
+        point.dot(self.normal) + self.offset
     }
 
     /// Get some point on the boundary line
@@ -61,13 +61,13 @@ mod tests {
 
     #[test]
     fn is_inside() {
-        let plane = HalfPlane::from_edge(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0));
+        let plane = HalfPlane::from_edge(Vec2::new(0.0, 1.0), Vec2::new(1.0, 0.0));
 
-        // Points below the edge (y < 0) should be inside
-        assert!(plane.is_inside(Vec2::new(0.0, -1.0)));
-        // Points above the edge (y > 0) should be outside
-        assert!(!plane.is_inside(Vec2::new(0.0, 1.0)));
+        // Points on the right side should be outside
+        assert!(!plane.is_inside(Vec2::new(0.0, 0.0)));
+        // Points on the left side should be inside
+        assert!(plane.is_inside(Vec2::new(1.0, 1.0)));
         // Points on the edge should be inside
-        assert!(plane.is_inside(Vec2::new(0.5, 0.0)));
+        assert!(plane.is_inside(Vec2::new(0.5, 0.5)));
     }
 }

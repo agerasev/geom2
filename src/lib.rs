@@ -1,13 +1,13 @@
 mod circle;
 mod line;
 mod plane;
-//mod polygon;
+mod polygon;
 
 pub use self::{
     circle::Circle,
     line::{Line, LineSegment},
     plane::HalfPlane,
-    //polygon::Polygon,
+    polygon::Polygon,
 };
 
 use core::f32;
@@ -43,4 +43,10 @@ pub trait Intersect<T: Intersect<Self> + ?Sized> {
     type Output: Sized;
     /// Abstract intersection of two figures.
     fn intersect(&self, other: &T) -> Option<Self::Output>;
+}
+
+impl<T: Shape> From<T> for Clump {
+    fn from(value: T) -> Self {
+        value.clump()
+    }
 }

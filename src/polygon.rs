@@ -1,6 +1,5 @@
+use crate::{Clump, HalfPlane, Intersect, LineSegment, Shape};
 use glam::Vec2;
-
-use crate::{Clump, HalfPlane, Location, Shape};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Polygon<V: AsRef<[Vec2]> + ?Sized> {
@@ -16,24 +15,107 @@ impl<V: AsRef<[Vec2]>> Polygon<V> {
     }
 }
 
+impl<V: AsRef<[Vec2]> + FromIterator<Vec2>> FromIterator<Vec2> for Polygon<V> {
+    fn from_iter<T: IntoIterator<Item = Vec2>>(iter: T) -> Self {
+        Self::new(V::from_iter(iter))
+    }
+}
+
+impl<U: AsRef<[Vec2]> + ?Sized, V: AsRef<[Vec2]> + ?Sized> PartialEq<Polygon<U>> for Polygon<V> {
+    fn eq(&self, other: &Polygon<U>) -> bool {
+        self.vertices() == other.vertices()
+    }
+}
+
 impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
     pub fn vertices(&self) -> &[Vec2] {
         self.vertices.as_ref()
     }
+
+    fn vertices_window<const N: usize>(&self) -> impl Iterator<Item = [Vec2; N]> {
+        let vertices = self.vertices().iter().copied();
+        let mut iter = vertices.clone().chain(vertices.clone());
+        let mut window = [Vec2::ZERO; N];
+        for (w, v) in window.iter_mut().skip(1).zip(&mut iter) {
+            *w = v;
+        }
+        iter.take(vertices.len()).map(move |v| {
+            window.rotate_left(1);
+            window[N - 1] = v;
+            window
+        })
+    }
+
+    pub fn edges(&self) -> impl Iterator<Item = LineSegment> {
+        self.vertices_window().map(|[a, b]| LineSegment(a, b))
+    }
+
+    pub fn is_convex(&self) -> bool {
+        if self.vertices().len() < 3 {
+            return true;
+        }
+
+        let mut sign = 0.0;
+        for [a, b, c] in self.vertices_window() {
+            let cross = (b - a).perp_dot(c - b);
+
+            if sign == 0.0 {
+                sign = cross;
+            } else if sign * cross < 0.0 {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
-    fn locate(&self, point: Vec2) -> Location {
-        unimplemented!()
+    fn is_inside(&self, point: Vec2) -> bool {
+        let vertices = self.vertices();
+        if vertices.len() < 3 {
+            return false;
+        }
+
+        let mut winding_number = 0;
+
+        for LineSegment(v0, v1) in self.edges() {
+            // Check if point is on the edge (including endpoints)
+            let edge = v1 - v0;
+            let to_point = point - v0;
+            let perp_dot = edge.perp_dot(to_point);
+
+            // Point is on edge if collinear and within segment bounds
+            if perp_dot.abs() < 1e-9 {
+                let dot = edge.dot(to_point);
+                if dot >= 0.0 && dot <= edge.length_squared() {
+                    return true;
+                }
+            }
+
+            // Test if edge crosses the horizontal line at point.y
+            if v0.y <= point.y {
+                if v1.y > point.y {
+                    // Upward crossing - check if point is left of edge
+                    if (v1 - v0).perp_dot(point - v0) > 1e-9 {
+                        winding_number += 1;
+                    }
+                }
+            } else if v1.y <= point.y {
+                // Downward crossing - check if point is right of edge
+                if (v1 - v0).perp_dot(point - v0) < -1e-9 {
+                    winding_number -= 1;
+                }
+            }
+        }
+
+        winding_number != 0
     }
 
     fn clump(&self) -> Clump {
         // Shoelace formula
-        let vertices = self.vertices();
-        let next_vertices = vertices[1..].iter().copied().chain([vertices[0]]);
         let mut area = 0.0;
         let mut centroid = Vec2::ZERO;
-        for (a, b) in (vertices.iter().copied()).zip(next_vertices) {
+        for LineSegment(a, b) in self.edges() {
             let cross = a.perp_dot(b);
             area += cross;
             centroid += (a + b) * cross;
@@ -45,16 +127,54 @@ impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
 }
 
 impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
-    /// Returns a new polygon resulting from intersection with the half-plane.
-    pub fn clip<U: AsRef<[Vec2]> + FromIterator<Vec2>>(plane: HalfPlane) -> Polygon<U> {
-        unimplemented!()
+    pub fn intersect_plane<W: AsRef<[Vec2]> + FromIterator<Vec2>>(
+        &self,
+        plane: &HalfPlane,
+    ) -> Polygon<W> {
+        let mut prev = match self.vertices().last() {
+            Some(p) => *p,
+            None => return Polygon::from_iter([]),
+        };
+        let mut prev_inside = plane.is_inside(prev);
+        let clip_iter = self
+            .vertices()
+            .iter()
+            .cloned()
+            .flat_map(|v| {
+                let inside = plane.is_inside(v);
+                let ret = match (prev_inside, inside) {
+                    (true, true) => [None, Some(v)],
+                    (true, false) => [
+                        None,
+                        Some(plane.edge().intersect(&LineSegment(prev, v)).unwrap()),
+                    ],
+                    (false, true) => [
+                        Some(plane.edge().intersect(&LineSegment(prev, v)).unwrap()),
+                        Some(v),
+                    ],
+                    (false, false) => [None, None],
+                };
+                prev_inside = inside;
+                prev = v;
+                ret
+            })
+            .flatten();
+        Polygon::from_iter(clip_iter)
     }
 
-    pub fn intersect_polygon<W: AsRef<[Vec2]> + ?Sized, U: AsRef<[Vec2]> + FromIterator<Vec2>>(
+    pub fn intersect_polygon<U: AsRef<[Vec2]> + ?Sized, W: AsRef<[Vec2]> + FromIterator<Vec2>>(
         &self,
-        other: &Polygon<W>,
-    ) -> Polygon<U> {
-        unimplemented!()
+        other: &Polygon<U>,
+    ) -> Polygon<W> {
+        let mut result = Polygon::from_iter(self.vertices().iter().copied());
+
+        // Sutherland-Hodgman polygon clipping algorithm
+        for LineSegment(a, b) in other.edges() {
+            let plane = HalfPlane::from_edge(a, b);
+            result = result.intersect_plane(&plane);
+        }
+
+        result
     }
 }
 
@@ -63,7 +183,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn square() {
+    fn square_clump() {
         let square = Polygon::new([
             Vec2::new(0.0, 0.0),
             Vec2::new(3.0, 0.0),
@@ -76,6 +196,139 @@ mod tests {
                 area: 6.0,
                 centroid: Vec2::new(1.5, 1.0)
             }
+        )
+    }
+
+    #[test]
+    fn is_inside() {
+        // Triangle
+        let triangle = Polygon::new([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(1.0, 2.0),
+        ]);
+
+        // Points inside triangle
+        assert!(triangle.is_inside(Vec2::new(1.0, 0.5)));
+        assert!(triangle.is_inside(Vec2::new(0.5, 0.5)));
+        assert!(triangle.is_inside(Vec2::new(1.5, 0.5)));
+
+        // Points outside triangle
+        assert!(!triangle.is_inside(Vec2::new(3.0, 3.0)));
+        assert!(!triangle.is_inside(Vec2::new(-1.0, -1.0)));
+
+        // Points on vertices
+        assert!(triangle.is_inside(Vec2::new(0.0, 0.0)));
+        assert!(triangle.is_inside(Vec2::new(2.0, 0.0)));
+        assert!(triangle.is_inside(Vec2::new(1.0, 2.0)));
+
+        // Test with complex concave polygon
+        let concave = Polygon::new([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(2.0, 2.0),
+            Vec2::new(1.0, 2.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(0.0, 1.0),
+        ]);
+
+        // Points in the concave region should be outside
+        assert!(!concave.is_inside(Vec2::new(0.5, 1.5)));
+        // Points in the main region should be inside
+        assert!(concave.is_inside(Vec2::new(1.5, 0.5)));
+    }
+
+    #[test]
+    fn is_convex() {
+        // Convex polygon (triangle)
+        let triangle = Polygon::new([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(1.0, 2.0),
+        ]);
+        assert!(triangle.is_convex());
+
+        // Convex polygon (square)
+        let square = Polygon::new([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(2.0, 2.0),
+            Vec2::new(0.0, 2.0),
+        ]);
+        assert!(square.is_convex());
+
+        // Concave polygon
+        let concave = Polygon::new([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(3.0, 0.0),
+            Vec2::new(3.0, 2.0),
+            Vec2::new(1.0, 2.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(0.0, 1.0),
+        ]);
+        assert!(!concave.is_convex());
+
+        // Degenerate cases
+        let empty: Polygon<[Vec2; 0]> = Polygon::new([]);
+        assert!(empty.is_convex());
+
+        let point = Polygon::new([Vec2::ZERO]);
+        assert!(point.is_convex());
+
+        let line = Polygon::new([Vec2::ZERO, Vec2::ONE]);
+        assert!(line.is_convex());
+    }
+
+    #[test]
+    fn intersect_plane() {
+        let square = Polygon::new([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(2.0, 2.0),
+            Vec2::new(0.0, 2.0),
+        ]);
+
+        // Clip with a vertical plane at x = 1
+        let plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(1.0, 0.0));
+        let clipped: Polygon<Vec<Vec2>> = square.intersect_plane(&plane);
+
+        // Should get a rectangle from x=0 to x=1
+        assert_eq!(
+            clipped,
+            Polygon::new([
+                Vec2::new(0.0, 0.0),
+                Vec2::new(1.0, 0.0),
+                Vec2::new(1.0, 2.0),
+                Vec2::new(0.0, 2.0),
+            ])
+        );
+    }
+
+    #[test]
+    fn intersect_polygon() {
+        let square1 = Polygon::new([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(2.0, 2.0),
+            Vec2::new(0.0, 2.0),
+        ]);
+
+        let square2 = Polygon::new([
+            Vec2::new(1.0, 1.0),
+            Vec2::new(3.0, 1.0),
+            Vec2::new(3.0, 3.0),
+            Vec2::new(1.0, 3.0),
+        ]);
+
+        let intersection: Polygon<Vec<Vec2>> = square1.intersect_polygon(&square2);
+        assert_eq!(
+            intersection,
+            Polygon::new([
+                Vec2::new(1.0, 1.0),
+                Vec2::new(2.0, 1.0),
+                Vec2::new(2.0, 2.0),
+                Vec2::new(1.0, 2.0),
+            ])
         )
     }
 }
