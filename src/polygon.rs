@@ -7,10 +7,7 @@ pub struct Polygon<V: AsRef<[Vec2]> + ?Sized> {
 }
 
 impl<V: AsRef<[Vec2]>> Polygon<V> {
-    pub fn new(vertices: V) -> Self
-    where
-        V: Sized,
-    {
+    pub fn new(vertices: V) -> Self {
         Self { vertices }
     }
 }
@@ -180,7 +177,10 @@ impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use super::*;
+    use std::vec::Vec;
 
     #[test]
     fn square_clump() {

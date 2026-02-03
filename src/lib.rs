@@ -1,3 +1,5 @@
+#![no_std]
+
 mod circle;
 mod line;
 mod plane;
