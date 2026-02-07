@@ -123,14 +123,13 @@ impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
     }
 }
 
-impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
-    pub fn intersect_plane<W: AsRef<[Vec2]> + FromIterator<Vec2>>(
-        &self,
-        plane: &HalfPlane,
-    ) -> Polygon<W> {
+impl<V: AsRef<[Vec2]> + ?Sized, W: AsRef<[Vec2]> + FromIterator<Vec2>>
+    Intersect<HalfPlane, Polygon<W>> for Polygon<V>
+{
+    fn intersect(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
         let mut prev = match self.vertices().last() {
             Some(p) => *p,
-            None => return Polygon::from_iter([]),
+            None => return None,
         };
         let mut prev_inside = plane.is_inside(prev);
         let clip_iter = self
@@ -156,22 +155,36 @@ impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
                 ret
             })
             .flatten();
-        Polygon::from_iter(clip_iter)
+        let result = Polygon::from_iter(clip_iter);
+        if !result.vertices().is_empty() {
+            Some(result)
+        } else {
+            None
+        }
     }
+}
 
-    pub fn intersect_polygon<U: AsRef<[Vec2]> + ?Sized, W: AsRef<[Vec2]> + FromIterator<Vec2>>(
-        &self,
-        other: &Polygon<U>,
-    ) -> Polygon<W> {
+impl<V: AsRef<[Vec2]> + ?Sized, W: AsRef<[Vec2]> + FromIterator<Vec2>>
+    Intersect<Polygon<V>, Polygon<W>> for HalfPlane
+{
+    fn intersect(&self, other: &Polygon<V>) -> Option<Polygon<W>> {
+        other.intersect(self)
+    }
+}
+
+impl<U: AsRef<[Vec2]> + ?Sized, V: AsRef<[Vec2]> + ?Sized, W: AsRef<[Vec2]> + FromIterator<Vec2>>
+    Intersect<Polygon<U>, Polygon<W>> for Polygon<V>
+{
+    fn intersect(&self, other: &Polygon<U>) -> Option<Polygon<W>> {
         let mut result = Polygon::from_iter(self.vertices().iter().copied());
 
         // Sutherland-Hodgman polygon clipping algorithm
         for LineSegment(a, b) in other.edges() {
             let plane = HalfPlane::from_edge(a, b);
-            result = result.intersect_plane(&plane);
+            result = result.intersect(&plane)?;
         }
 
-        result
+        Some(result)
     }
 }
 
@@ -290,7 +303,7 @@ mod tests {
 
         // Clip with a vertical plane at x = 1
         let plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(1.0, 0.0));
-        let clipped: Polygon<Vec<Vec2>> = square.intersect_plane(&plane);
+        let clipped: Polygon<Vec<Vec2>> = square.intersect(&plane).unwrap();
 
         // Should get a rectangle from x=0 to x=1
         assert_eq!(
@@ -320,7 +333,7 @@ mod tests {
             Vec2::new(1.0, 3.0),
         ]);
 
-        let intersection: Polygon<Vec<Vec2>> = square1.intersect_polygon(&square2);
+        let intersection: Polygon<Vec<Vec2>> = square1.intersect(&square2).unwrap();
         assert_eq!(
             intersection,
             Polygon::new([
