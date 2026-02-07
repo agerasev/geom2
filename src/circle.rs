@@ -1,4 +1,4 @@
-use crate::{Clump, HalfPlane, Intersect, Shape};
+use crate::{EPS, HalfPlane, Intersect, Moments, Shape};
 use core::f32::consts::PI;
 use glam::Vec2;
 
@@ -13,8 +13,8 @@ impl Shape for Circle {
         (self.center - point).length_squared() <= self.radius.powi(2)
     }
 
-    fn clump(&self) -> Clump {
-        Clump {
+    fn moments(&self) -> Moments {
+        Moments {
             centroid: self.center,
             area: PI * self.radius.powi(2),
         }
@@ -36,7 +36,7 @@ impl CircleSegment {
     fn new_unit(dist: f32) -> CircleSegment {
         let cosine = dist.clamp(-1.0, 1.0);
         let sine = (1.0 - cosine.powi(2)).sqrt();
-        let (area, offset) = if cosine.abs() < 1.0 - 1e-4 {
+        let (area, offset) = if cosine.abs() < 1.0 - EPS {
             let area = cosine.acos() - cosine * sine;
             (area, (2.0 / 3.0) * sine.powi(3) / area)
         } else {
@@ -62,20 +62,19 @@ impl CircleSegment {
     }
 }
 
-impl Intersect<Circle> for HalfPlane {
-    type Output = Clump;
-    fn intersect(&self, circle: &Circle) -> Option<Clump> {
+impl Intersect<Circle, Moments> for HalfPlane {
+    fn intersect(&self, circle: &Circle) -> Option<Moments> {
         let plane = self;
         let dist = circle.center.dot(plane.normal) - plane.offset;
         if dist < circle.radius {
             if dist > -circle.radius {
                 let segment = CircleSegment::new(circle.radius, dist);
-                Some(Clump {
+                Some(Moments {
                     area: segment.area,
                     centroid: circle.center - plane.normal * segment.offset,
                 })
             } else {
-                Some(Clump {
+                Some(Moments {
                     area: PI * circle.radius.powi(2),
                     centroid: circle.center,
                 })
@@ -86,16 +85,14 @@ impl Intersect<Circle> for HalfPlane {
     }
 }
 
-impl Intersect<HalfPlane> for Circle {
-    type Output = Clump;
-    fn intersect(&self, other: &HalfPlane) -> Option<Clump> {
+impl Intersect<HalfPlane, Moments> for Circle {
+    fn intersect(&self, other: &HalfPlane) -> Option<Moments> {
         other.intersect(self)
     }
 }
 
-impl Intersect<Circle> for Circle {
-    type Output = Clump;
-    fn intersect(&self, other: &Circle) -> Option<Clump> {
+impl Intersect<Circle, Moments> for Circle {
+    fn intersect(&self, other: &Circle) -> Option<Moments> {
         // Vector pointing from `self.center` to `other.center`
         let vec = other.center - self.center;
         // Distance between the centers of the circles
@@ -113,7 +110,7 @@ impl Intersect<Circle> for Circle {
                 let other_segment = CircleSegment::new(other.radius, other_offset);
 
                 let area = self_segment.area + other_segment.area;
-                Some(Clump {
+                Some(Moments {
                     area,
                     centroid: ((self.center + dir * self_segment.offset) * self_segment.area
                         + (other.center - dir * other_segment.offset) * other_segment.area)
@@ -125,7 +122,7 @@ impl Intersect<Circle> for Circle {
                 } else {
                     (other.radius, other.center)
                 };
-                Some(Clump {
+                Some(Moments {
                     area: PI * minr.powi(2),
                     centroid: minc,
                 })

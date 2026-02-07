@@ -1,7 +1,5 @@
-use crate::Intersect;
+use crate::{EPS, Intersect};
 use glam::Vec2;
-
-const EPS: f32 = 1e-9;
 
 /// Infinite line defined by two points lying on it.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -62,8 +60,7 @@ impl LineSegment {
     }
 }
 
-impl Intersect<Line> for Line {
-    type Output = Vec2;
+impl Intersect<Line, Vec2> for Line {
     fn intersect(&self, other: &Line) -> Option<Vec2> {
         let p = self.0;
         let q = other.0;
@@ -110,8 +107,7 @@ impl Intersect<Line> for Line {
     }
 }
 
-impl Intersect<Line> for LineSegment {
-    type Output = Vec2;
+impl Intersect<Line, Vec2> for LineSegment {
     fn intersect(&self, other: &Line) -> Option<Vec2> {
         let p = self.0;
         let q = other.0;
@@ -167,15 +163,13 @@ impl Intersect<Line> for LineSegment {
     }
 }
 
-impl Intersect<LineSegment> for Line {
-    type Output = Vec2;
+impl Intersect<LineSegment, Vec2> for Line {
     fn intersect(&self, other: &LineSegment) -> Option<Vec2> {
         other.intersect(self)
     }
 }
 
-impl Intersect<LineSegment> for LineSegment {
-    type Output = Vec2;
+impl Intersect<LineSegment, Vec2> for LineSegment {
     fn intersect(&self, other: &LineSegment) -> Option<Vec2> {
         let p = self.0;
         let q = other.0;

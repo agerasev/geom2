@@ -1,4 +1,4 @@
-use crate::{Clump, Line, Shape};
+use crate::{Line, Moments, Shape};
 use glam::Vec2;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -47,8 +47,8 @@ impl Shape for HalfPlane {
         self.distance(point) <= 0.0
     }
 
-    fn clump(&self) -> Clump {
-        Clump {
+    fn moments(&self) -> Moments {
+        Moments {
             centroid: Vec2::INFINITY,
             area: f32::INFINITY,
         }
