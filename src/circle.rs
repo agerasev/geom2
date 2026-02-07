@@ -1,4 +1,4 @@
-use crate::{EPS, HalfPlane, Intersect, Moments, Shape};
+use crate::{EPS, Edge, HalfPlane, Intersect, Moments, Shape, Vertex};
 use core::f32::consts::PI;
 use glam::Vec2;
 
@@ -22,18 +22,44 @@ impl Shape for Circle {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-struct CircleSegment {
+pub enum CircleOrSegment {
+    Circle(Circle),
+    Segment(Arc),
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Arc {
+    pub bounds: (Vec2, Vec2),
+    pub sagitta: f32,
+}
+
+/// One bound point of arc with the sagitta of the arc to the next bound point.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct ArcVertex {
+    pub point: Vec2,
+    pub sagitta: f32,
+}
+
+impl Edge for Arc {
+    type Vertex = ArcVertex;
+}
+impl Vertex for ArcVertex {
+    type Edge = Arc;
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+struct CircleSegmentMoments {
     /// Area of the segment
     area: f32,
     /// Offset from the circle center
     offset: f32,
 }
 
-impl CircleSegment {
+impl CircleSegmentMoments {
     /// For given unit circle chord returns segment area and centroid offset.
     ///
     /// Chord is defined via distance from circle center.
-    fn new_unit(dist: f32) -> CircleSegment {
+    fn new_unit(dist: f32) -> CircleSegmentMoments {
         let cosine = dist.clamp(-1.0, 1.0);
         let sine = (1.0 - cosine.powi(2)).sqrt();
         let (area, offset) = if cosine.abs() < 1.0 - EPS {
@@ -50,12 +76,12 @@ impl CircleSegment {
                 (PI - a, -b * a / (PI - a))
             }
         };
-        CircleSegment { area, offset }
+        CircleSegmentMoments { area, offset }
     }
 
-    fn new(radius: f32, dist: f32) -> CircleSegment {
-        let CircleSegment { area, offset } = Self::new_unit(dist / radius);
-        CircleSegment {
+    fn new(radius: f32, dist: f32) -> CircleSegmentMoments {
+        let CircleSegmentMoments { area, offset } = Self::new_unit(dist / radius);
+        CircleSegmentMoments {
             area: area * radius.powi(2),
             offset: offset * radius,
         }
@@ -68,7 +94,7 @@ impl Intersect<Circle, Moments> for HalfPlane {
         let dist = circle.center.dot(plane.normal) - plane.offset;
         if dist < circle.radius {
             if dist > -circle.radius {
-                let segment = CircleSegment::new(circle.radius, dist);
+                let segment = CircleSegmentMoments::new(circle.radius, dist);
                 Some(Moments {
                     area: segment.area,
                     centroid: circle.center - plane.normal * segment.offset,
@@ -106,8 +132,8 @@ impl Intersect<Circle, Moments> for Circle {
                     0.5 * (dist + (self.radius.powi(2) - other.radius.powi(2)) / dist);
                 let other_offset = dist - self_offset;
 
-                let self_segment = CircleSegment::new(self.radius, self_offset);
-                let other_segment = CircleSegment::new(other.radius, other_offset);
+                let self_segment = CircleSegmentMoments::new(self.radius, self_offset);
+                let other_segment = CircleSegmentMoments::new(other.radius, other_offset);
 
                 let area = self_segment.area + other_segment.area;
                 Some(Moments {
@@ -143,8 +169,8 @@ mod tests {
     #[test]
     fn empty_segment() {
         assert_eq!(
-            CircleSegment::new(R, R),
-            CircleSegment {
+            CircleSegmentMoments::new(R, R),
+            CircleSegmentMoments {
                 area: 0.0,
                 offset: R
             }
@@ -154,8 +180,8 @@ mod tests {
     #[test]
     fn full_segment() {
         assert_eq!(
-            CircleSegment::new(R, -R),
-            CircleSegment {
+            CircleSegmentMoments::new(R, -R),
+            CircleSegmentMoments {
                 area: PI * R.powi(2),
                 offset: 0.0
             }
@@ -164,7 +190,7 @@ mod tests {
 
     #[test]
     fn half_segment() {
-        assert_eq!(CircleSegment::new(R, 0.0).area, PI * R.powi(2) / 2.0);
+        assert_eq!(CircleSegmentMoments::new(R, 0.0).area, PI * R.powi(2) / 2.0);
     }
 
     #[test]
@@ -184,7 +210,7 @@ mod tests {
             moment += d_area * (x + 0.5 * dx);
             if x >= last_check + check_step {
                 last_check = x;
-                let ref_segment = CircleSegment::new(1.0, (1.0 - x) as f32);
+                let ref_segment = CircleSegmentMoments::new(1.0, (1.0 - x) as f32);
                 assert_abs_diff_eq!(ref_segment.area, area as f32, epsilon = 1e-4);
                 assert_abs_diff_eq!(
                     ref_segment.offset,

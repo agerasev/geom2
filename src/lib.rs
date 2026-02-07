@@ -6,10 +6,10 @@ mod plane;
 mod polygon;
 
 pub use self::{
-    circle::Circle,
+    circle::{Arc, Circle, CircleOrSegment},
     line::{Line, LineSegment},
     plane::HalfPlane,
-    polygon::Polygon,
+    polygon::{Edge, Polygon, Vertex},
 };
 
 use core::f32;

@@ -1,4 +1,4 @@
-use crate::{EPS, Intersect};
+use crate::{EPS, Edge, Intersect, Vertex};
 use glam::Vec2;
 
 /// Infinite line defined by two points lying on it.
@@ -58,6 +58,13 @@ impl LineSegment {
         let dot = (point - self.0).dot(r);
         dot >= -EPS && dot <= r.length_squared() + EPS
     }
+}
+
+impl Edge for LineSegment {
+    type Vertex = Vec2;
+}
+impl Vertex for Vec2 {
+    type Edge = LineSegment;
 }
 
 impl Intersect<Line, Vec2> for Line {
