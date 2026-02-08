@@ -19,7 +19,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
 }
 
 impl<V: AsIterator<Item = Vec2> + ?Sized> Shape for Polygon<V> {
-    fn is_inside(&self, point: Vec2) -> bool {
+    fn contains(&self, point: Vec2) -> bool {
         let mut winding_number = 0;
 
         for LineSegment(v0, v1) in self.edges() {
@@ -78,12 +78,12 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
             Some(p) => *p,
             None => return None,
         };
-        let mut prev_inside = plane.is_inside(prev);
+        let mut prev_inside = plane.contains(prev);
         let clip_iter = self
             .vertices()
             .cloned()
             .flat_map(|v| {
-                let inside = plane.is_inside(v);
+                let inside = plane.contains(v);
                 let ret = match (prev_inside, inside) {
                     (true, true) => [None, Some(v)],
                     (true, false) => [
@@ -171,18 +171,18 @@ mod tests {
         ]);
 
         // Points inside triangle
-        assert!(triangle.is_inside(Vec2::new(1.0, 0.5)));
-        assert!(triangle.is_inside(Vec2::new(0.5, 0.5)));
-        assert!(triangle.is_inside(Vec2::new(1.5, 0.5)));
+        assert!(triangle.contains(Vec2::new(1.0, 0.5)));
+        assert!(triangle.contains(Vec2::new(0.5, 0.5)));
+        assert!(triangle.contains(Vec2::new(1.5, 0.5)));
 
         // Points outside triangle
-        assert!(!triangle.is_inside(Vec2::new(3.0, 3.0)));
-        assert!(!triangle.is_inside(Vec2::new(-1.0, -1.0)));
+        assert!(!triangle.contains(Vec2::new(3.0, 3.0)));
+        assert!(!triangle.contains(Vec2::new(-1.0, -1.0)));
 
         // Points on vertices
-        assert!(triangle.is_inside(Vec2::new(0.0, 0.0)));
-        assert!(triangle.is_inside(Vec2::new(2.0, 0.0)));
-        assert!(triangle.is_inside(Vec2::new(1.0, 2.0)));
+        assert!(triangle.contains(Vec2::new(0.0, 0.0)));
+        assert!(triangle.contains(Vec2::new(2.0, 0.0)));
+        assert!(triangle.contains(Vec2::new(1.0, 2.0)));
 
         // Test with complex concave polygon
         let concave = Polygon::new([
@@ -195,9 +195,9 @@ mod tests {
         ]);
 
         // Points in the concave region should be outside
-        assert!(!concave.is_inside(Vec2::new(0.5, 1.5)));
+        assert!(!concave.contains(Vec2::new(0.5, 1.5)));
         // Points in the main region should be inside
-        assert!(concave.is_inside(Vec2::new(1.5, 0.5)));
+        assert!(concave.contains(Vec2::new(1.5, 0.5)));
     }
 
     #[test]

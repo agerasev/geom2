@@ -1,4 +1,4 @@
-use crate::{EPS, Edge, HalfPlane, Intersect, Moments, Shape, Vertex};
+use crate::{EPS, Edge, HalfPlane, Intersect, LineSegment, Moments, Shape, Vertex};
 use core::f32::consts::PI;
 use glam::Vec2;
 
@@ -9,7 +9,7 @@ pub struct Circle {
 }
 
 impl Shape for Circle {
-    fn is_inside(&self, point: Vec2) -> bool {
+    fn contains(&self, point: Vec2) -> bool {
         (self.center - point).length_squared() <= self.radius.powi(2)
     }
 
@@ -56,9 +56,31 @@ impl Vertex for ArcVertex {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct CircleSegment(pub Arc);
 
+impl CircleSegment {
+    pub fn chord(&self) -> LineSegment {
+        LineSegment(self.0.bounds.0, self.0.bounds.1)
+    }
+}
+
 impl Shape for CircleSegment {
-    fn is_inside(&self, point: Vec2) -> bool {
-        unimplemented!()
+    fn contains(&self, point: Vec2) -> bool {
+        let (a, b) = self.0.bounds;
+        let c = 0.5 * (a + b);
+        let s = self.0.sagitta;
+        if s.abs() < EPS {
+            return self.chord().contains(point);
+        }
+
+        let h = 0.5 * (b - a).length();
+        let radius = (h.powi(2) + s.powi(2)) / (2.0 * s);
+        let normal = (b - a).perp() / (2.0 * h);
+        let center = c + normal * (s - radius);
+
+        if (Circle { center, radius }).contains(point) {
+            (point - c).dot(normal) > -EPS
+        } else {
+            false
+        }
     }
 
     fn moments(&self) -> Moments {
@@ -256,6 +278,20 @@ mod tests {
     }
 
     #[test]
+    fn segment_contains() {
+        let segment = CircleSegment(Arc {
+            bounds: (Vec2::new(1.0, 1.0), Vec2::new(4.0, 1.0)),
+            sagitta: 4.0,
+        });
+
+        assert!(!segment.contains(Vec2::new(2.5, 5.01)));
+        assert!(segment.contains(Vec2::new(2.5, 4.99)));
+
+        assert!(segment.contains(Vec2::new(2.5, 1.01)));
+        assert!(!segment.contains(Vec2::new(2.5, 0.99)));
+    }
+
+    #[test]
     fn numerical_segment() {
         let f = |x: f64| 2.0 * (1.0 - (1.0 - x).powi(2)).sqrt();
 
@@ -272,12 +308,18 @@ mod tests {
             moment += d_area * (x + 0.5 * dx);
             if x >= last_check + check_step {
                 last_check = x;
-                let y = (1.0 - x.powi(2)).sqrt();
-                let ref_segment = CircleSegmentMoments::new(1.0, (1.0 - x) as f32);
-                assert_abs_diff_eq!(ref_segment.area, area as f32, epsilon = 1e-4);
+                let y = (1.0 - (1.0 - x).powi(2)).sqrt();
+                let ref_segment = CircleSegment(Arc {
+                    bounds: (
+                        Vec2::new(x as f32, -y as f32),
+                        Vec2::new(x as f32, y as f32),
+                    ),
+                    sagitta: x as f32,
+                });
+                assert_abs_diff_eq!(ref_segment.area(), area as f32, epsilon = 1e-4);
                 assert_abs_diff_eq!(
-                    ref_segment.offset,
-                    1.0 - (moment / area) as f32,
+                    ref_segment.centroid(),
+                    Vec2::new((moment / area) as f32, 0.0),
                     epsilon = 1e-4
                 );
             }

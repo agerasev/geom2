@@ -25,7 +25,7 @@ pub trait Shape {
     ///
     /// Shape is considered to be closed rather than open.
     /// That means the boundary points is inside the shape.
-    fn is_inside(&self, point: Vec2) -> bool;
+    fn contains(&self, point: Vec2) -> bool;
 
     /// Moments of the shape
     fn moments(&self) -> Moments;

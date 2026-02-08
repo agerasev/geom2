@@ -43,7 +43,7 @@ impl HalfPlane {
 }
 
 impl Shape for HalfPlane {
-    fn is_inside(&self, point: Vec2) -> bool {
+    fn contains(&self, point: Vec2) -> bool {
         self.distance(point) <= 0.0
     }
 
@@ -66,11 +66,11 @@ mod tests {
         let plane = HalfPlane::from_edge(Vec2::new(0.0, 1.0), Vec2::new(1.0, 0.0));
 
         // Points on the right side should be outside
-        assert!(!plane.is_inside(Vec2::new(0.0, 0.0)));
+        assert!(!plane.contains(Vec2::new(0.0, 0.0)));
         // Points on the left side should be inside
-        assert!(plane.is_inside(Vec2::new(1.0, 1.0)));
+        assert!(plane.contains(Vec2::new(1.0, 1.0)));
         // Points on the edge should be inside
-        assert!(plane.is_inside(Vec2::new(0.5, 0.5)));
+        assert!(plane.contains(Vec2::new(0.5, 0.5)));
     }
 
     #[test]
@@ -97,15 +97,15 @@ mod tests {
         let plane = HalfPlane::from_edge(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0));
 
         // When looking from (0,0) to (1,0), left side is +Y direction
-        assert!(plane.is_inside(Vec2::new(0.5, 1.0))); // Above edge - inside
-        assert!(!plane.is_inside(Vec2::new(0.5, -1.0))); // Below edge - outside
+        assert!(plane.contains(Vec2::new(0.5, 1.0))); // Above edge - inside
+        assert!(!plane.contains(Vec2::new(0.5, -1.0))); // Below edge - outside
 
         // Vertical edge from (0,0) to (0,1)
         let plane = HalfPlane::from_edge(Vec2::new(0.0, 0.0), Vec2::new(0.0, 1.0));
 
         // When looking from (0,0) to (0,1), left side is -X direction
-        assert!(plane.is_inside(Vec2::new(-1.0, 0.5))); // Left of edge - inside
-        assert!(!plane.is_inside(Vec2::new(1.0, 0.5))); // Right of edge - outside
+        assert!(plane.contains(Vec2::new(-1.0, 0.5))); // Left of edge - inside
+        assert!(!plane.contains(Vec2::new(1.0, 0.5))); // Right of edge - outside
     }
 
     #[test]
@@ -238,9 +238,9 @@ mod tests {
         // Points far from boundary
         let plane = HalfPlane::from_edge(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0));
         let far_point = Vec2::new(0.5, 1e6);
-        assert!(plane.is_inside(far_point));
+        assert!(plane.contains(far_point));
 
         let far_outside = Vec2::new(0.5, -1e6);
-        assert!(!plane.is_inside(far_outside));
+        assert!(!plane.contains(far_outside));
     }
 }
