@@ -68,7 +68,7 @@ impl Shape for CircleSegment {
         let c = 0.5 * (a + b);
         let s = self.0.sagitta;
         if s.abs() < EPS {
-            return self.chord().contains(point);
+            return false;
         }
 
         let h = 0.5 * (b - a).length();

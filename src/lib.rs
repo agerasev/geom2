@@ -23,8 +23,7 @@ pub trait Shape {
 
     /// Check that the `point` is inside the shape.
     ///
-    /// Shape is considered to be closed rather than open.
-    /// That means the boundary points is inside the shape.
+    /// Result is unspecified within boundary [`EPS`]-neighbourhood.  
     fn contains(&self, point: Vec2) -> bool;
 
     /// Moments of the shape

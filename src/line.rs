@@ -14,7 +14,8 @@ impl Line {
         (self.1 - self.0).abs().max_element() < EPS
     }
 
-    pub fn contains(&self, point: Vec2) -> bool {
+    /// Check that point is within EPS-neighbourhood of the line.
+    pub fn is_near(&self, point: Vec2) -> bool {
         let r = self.1 - self.0;
 
         // Check if `self` is degenerate
@@ -39,8 +40,8 @@ impl LineSegment {
         Line(self.0, self.1).is_degenerate()
     }
 
-    /// Checks if a point lies on this segment (within epsilon)
-    pub fn contains(&self, point: Vec2) -> bool {
+    /// Checks is a point is within EPS-neighbourhood of the segment
+    pub fn is_near(&self, point: Vec2) -> bool {
         let r = self.1 - self.0;
 
         // Check if `self` is degenerate
@@ -311,7 +312,7 @@ mod tests {
         let result = l1.intersect(&l2);
         assert!(result.is_some());
         // Should return any point on the line
-        assert!(l1.contains(result.unwrap()));
+        assert!(l1.is_near(result.unwrap()));
 
         // Coincident but opposite directions
         let l1 = Line(Vec2::new(0.0, 0.0), Vec2::new(2.0, 2.0));
@@ -319,7 +320,7 @@ mod tests {
         let result = l1.intersect(&l2);
         assert!(result.is_some());
         // Should return any point on the line
-        assert!(l1.contains(result.unwrap()));
+        assert!(l1.is_near(result.unwrap()));
     }
 
     #[test]
@@ -620,30 +621,30 @@ mod tests {
         let seg = LineSegment(Vec2::new(0.0, 0.0), Vec2::new(2.0, 0.0));
 
         // Point at start
-        assert!(seg.contains(Vec2::new(0.0, 0.0)));
+        assert!(seg.is_near(Vec2::new(0.0, 0.0)));
 
         // Point at end
-        assert!(seg.contains(Vec2::new(2.0, 0.0)));
+        assert!(seg.is_near(Vec2::new(2.0, 0.0)));
 
         // Point in middle
-        assert!(seg.contains(Vec2::new(1.0, 0.0)));
+        assert!(seg.is_near(Vec2::new(1.0, 0.0)));
 
         // Point slightly beyond start (within epsilon)
-        assert!(seg.contains(Vec2::new(-EPS / 2.0, 0.0)));
+        assert!(seg.is_near(Vec2::new(-EPS / 2.0, 0.0)));
 
         // Point slightly beyond end (within epsilon)
-        assert!(seg.contains(Vec2::new(2.0 + EPS / 2.0, 0.0)));
+        assert!(seg.is_near(Vec2::new(2.0 + EPS / 2.0, 0.0)));
 
         // Point not on segment
-        assert!(!seg.contains(Vec2::new(3.0, 0.0)));
+        assert!(!seg.is_near(Vec2::new(3.0, 0.0)));
 
         // Point not collinear
-        assert!(!seg.contains(Vec2::new(1.0, 1.0)));
+        assert!(!seg.is_near(Vec2::new(1.0, 1.0)));
 
         // Diagonal segment
         let seg = LineSegment(Vec2::new(0.0, 0.0), Vec2::new(2.0, 2.0));
-        assert!(seg.contains(Vec2::new(1.0, 1.0)));
-        assert!(!seg.contains(Vec2::new(1.0, 1.1)));
+        assert!(seg.is_near(Vec2::new(1.0, 1.0)));
+        assert!(!seg.is_near(Vec2::new(1.0, 1.1)));
     }
 
     #[test]
@@ -652,11 +653,11 @@ mod tests {
         let seg = LineSegment(Vec2::new(1.0, 1.0), Vec2::new(1.0 + EPS / 2.0, 1.0));
 
         // Contains its own points
-        assert!(seg.contains(Vec2::new(1.0, 1.0)));
-        assert!(seg.contains(Vec2::new(1.0 + EPS / 2.0, 1.0)));
+        assert!(seg.is_near(Vec2::new(1.0, 1.0)));
+        assert!(seg.is_near(Vec2::new(1.0 + EPS / 2.0, 1.0)));
 
         // Doesn't contain other points
-        assert!(!seg.contains(Vec2::new(1.0, 1.1)));
+        assert!(!seg.is_near(Vec2::new(1.0, 1.1)));
     }
 
     #[test]

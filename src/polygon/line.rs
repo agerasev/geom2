@@ -1,5 +1,5 @@
 use super::{AsIterator, Polygon};
-use crate::{HalfPlane, Intersect, LineSegment, Moments, Shape};
+use crate::{EPS, HalfPlane, Intersect, LineSegment, Moments, Shape};
 use glam::Vec2;
 
 impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
@@ -23,24 +23,11 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Shape for Polygon<V> {
         let mut winding_number = 0;
 
         for LineSegment(v0, v1) in self.edges() {
-            // Check if point is on the edge (including endpoints)
-            let edge = v1 - v0;
-            let to_point = point - v0;
-            let perp_dot = edge.perp_dot(to_point);
-
-            // Point is on edge if collinear and within segment bounds
-            if perp_dot.abs() < 1e-9 {
-                let dot = edge.dot(to_point);
-                if dot >= 0.0 && dot <= edge.length_squared() {
-                    return true;
-                }
-            }
-
             // Test if edge crosses the horizontal line at point.y
             if v0.y <= point.y {
                 if v1.y > point.y {
                     // Upward crossing - check if point is left of edge
-                    if (v1 - v0).perp_dot(point - v0) > 1e-9 {
+                    if (v1 - v0).perp_dot(point - v0) > EPS {
                         winding_number += 1;
                     }
                 }
@@ -178,11 +165,6 @@ mod tests {
         // Points outside triangle
         assert!(!triangle.contains(Vec2::new(3.0, 3.0)));
         assert!(!triangle.contains(Vec2::new(-1.0, -1.0)));
-
-        // Points on vertices
-        assert!(triangle.contains(Vec2::new(0.0, 0.0)));
-        assert!(triangle.contains(Vec2::new(2.0, 0.0)));
-        assert!(triangle.contains(Vec2::new(1.0, 2.0)));
 
         // Test with complex concave polygon
         let concave = Polygon::new([
