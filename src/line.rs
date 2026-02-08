@@ -62,6 +62,9 @@ impl LineSegment {
 
 impl Edge for LineSegment {
     type Vertex = Vec2;
+    fn from_vertices(a: &Self::Vertex, b: &Self::Vertex) -> Self {
+        LineSegment(*a, *b)
+    }
 }
 impl Vertex for Vec2 {
     type Edge = LineSegment;

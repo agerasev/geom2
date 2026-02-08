@@ -6,7 +6,7 @@ mod plane;
 mod polygon;
 
 pub use self::{
-    circle::{Arc, Circle, CircleOrSegment},
+    circle::{Arc, ArcVertex, Circle, CircleOrSegment, CircleSegment},
     line::{Line, LineSegment},
     plane::HalfPlane,
     polygon::{Edge, Polygon, Vertex},

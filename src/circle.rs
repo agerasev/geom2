@@ -42,9 +42,62 @@ pub struct ArcVertex {
 
 impl Edge for Arc {
     type Vertex = ArcVertex;
+    fn from_vertices(a: &Self::Vertex, b: &Self::Vertex) -> Self {
+        Self {
+            bounds: (a.point, b.point),
+            sagitta: a.sagitta,
+        }
+    }
 }
 impl Vertex for ArcVertex {
     type Edge = Arc;
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct CircleSegment(pub Arc);
+
+impl Shape for CircleSegment {
+    fn is_inside(&self, point: Vec2) -> bool {
+        unimplemented!()
+    }
+
+    fn moments(&self) -> Moments {
+        let (a, b) = self.0.bounds;
+        let c = 0.5 * (a + b);
+        let s = self.0.sagitta;
+        if s.abs() < EPS {
+            return Moments {
+                area: 0.0,
+                centroid: c,
+            };
+        }
+
+        let h = 0.5 * (b - a).length();
+        let radius = (h.powi(2) + s.powi(2)) / (2.0 * s);
+
+        let cosine = 1.0 - s / radius;
+        let sine = h / radius;
+        let (area, offset) = if cosine.abs() < 1.0 - EPS {
+            let area = cosine.acos() - cosine * sine;
+            (area, (2.0 / 3.0) * sine.powi(3) / area)
+        } else {
+            // Approximate circle by parabola
+            let y = 1.0 - cosine.abs();
+            let a = (4.0 / 3.0) * (2.0 * y).sqrt() * y;
+            let b = 1.0 - (3.0 / 10.0) * y;
+            if cosine > 0.0 {
+                (a, b)
+            } else {
+                (PI - a, -b * a / (PI - a))
+            }
+        };
+
+        let normal = (b - a).perp() / (2.0 * h);
+        Moments {
+            area: area * radius.powi(2),
+            centroid: c + normal * (s + radius * (offset - 1.0)),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -168,29 +221,38 @@ mod tests {
 
     #[test]
     fn empty_segment() {
-        assert_eq!(
-            CircleSegmentMoments::new(R, R),
-            CircleSegmentMoments {
-                area: 0.0,
-                offset: R
-            }
-        );
+        let Moments { area, centroid } = CircleSegment(Arc {
+            bounds: (Vec2::new(-EPS, 0.0), Vec2::new(EPS, 0.0)),
+            sagitta: 0.0,
+        })
+        .moments();
+
+        assert_abs_diff_eq!(area, 0.0, epsilon = EPS);
+        assert_abs_diff_eq!(centroid, Vec2::ZERO, epsilon = EPS);
     }
 
     #[test]
     fn full_segment() {
-        assert_eq!(
-            CircleSegmentMoments::new(R, -R),
-            CircleSegmentMoments {
-                area: PI * R.powi(2),
-                offset: 0.0
-            }
-        );
+        let Moments { area, centroid } = CircleSegment(Arc {
+            bounds: (Vec2::new(-EPS, 0.0), Vec2::new(EPS, 0.0)),
+            sagitta: 2.0 * R,
+        })
+        .moments();
+
+        assert_abs_diff_eq!(area, PI * R.powi(2), epsilon = EPS);
+        assert_abs_diff_eq!(centroid, Vec2::new(0.0, R), epsilon = EPS);
     }
 
     #[test]
     fn half_segment() {
-        assert_eq!(CircleSegmentMoments::new(R, 0.0).area, PI * R.powi(2) / 2.0);
+        assert_eq!(
+            CircleSegment(Arc {
+                bounds: (Vec2::new(-R, 0.0), Vec2::new(R, 0.0)),
+                sagitta: R,
+            })
+            .area(),
+            PI * R.powi(2) / 2.0
+        );
     }
 
     #[test]
@@ -210,6 +272,7 @@ mod tests {
             moment += d_area * (x + 0.5 * dx);
             if x >= last_check + check_step {
                 last_check = x;
+                let y = (1.0 - x.powi(2)).sqrt();
                 let ref_segment = CircleSegmentMoments::new(1.0, (1.0 - x) as f32);
                 assert_abs_diff_eq!(ref_segment.area, area as f32, epsilon = 1e-4);
                 assert_abs_diff_eq!(

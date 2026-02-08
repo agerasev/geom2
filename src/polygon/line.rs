@@ -3,10 +3,6 @@ use crate::{HalfPlane, Intersect, LineSegment, Moments, Shape};
 use glam::Vec2;
 
 impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
-    pub fn edges(&self) -> impl Iterator<Item = LineSegment> {
-        self.vertices_window().map(|[a, b]| LineSegment(*a, *b))
-    }
-
     pub fn is_convex(&self) -> bool {
         let mut sign = 0.0;
         for [a, b, c] in self.vertices_window() {

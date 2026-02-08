@@ -2,6 +2,7 @@ pub mod line;
 
 pub trait Edge: Copy {
     type Vertex: Vertex<Edge = Self>;
+    fn from_vertices(a: &Self::Vertex, b: &Self::Vertex) -> Self;
 }
 pub trait Vertex: Copy {
     type Edge: Edge<Vertex = Self>;
@@ -82,5 +83,12 @@ where
 {
     pub fn len(&self) -> usize {
         self.vertices.iter().len()
+    }
+}
+
+impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> Polygon<V> {
+    pub fn edges(&self) -> impl Iterator<Item = T::Edge> {
+        self.vertices_window()
+            .map(|[a, b]| T::Edge::from_vertices(a, b))
     }
 }
