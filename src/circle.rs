@@ -242,6 +242,26 @@ mod tests {
     const R: f32 = 1.234;
 
     #[test]
+    fn circle_contains() {
+        let circle = Circle {
+            center: Vec2::new(0.0, 0.0),
+            radius: 1.0,
+        };
+
+        assert!(circle.contains(circle.center));
+
+        // Inside points
+        assert!(circle.contains(Vec2::new(0.5, 0.0)));
+        assert!(circle.contains(Vec2::new(0.0, 0.5)));
+        assert!(circle.contains(Vec2::new(0.3, 0.4)));
+
+        // Outside points
+        assert!(!circle.contains(Vec2::new(1.5, 0.0)));
+        assert!(!circle.contains(Vec2::new(0.0, 1.5)));
+        assert!(!circle.contains(Vec2::new(0.9, 0.9)));
+    }
+
+    #[test]
     fn empty_segment() {
         let Moments { area, centroid } = CircleSegment(Arc {
             bounds: (Vec2::new(-EPS, 0.0), Vec2::new(EPS, 0.0)),
