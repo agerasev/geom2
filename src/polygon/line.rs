@@ -1,8 +1,8 @@
-use super::{AsIterator, Polygon};
-use crate::{EPS, HalfPlane, Intersect, LineSegment, Moments, Shape};
+use super::Polygon;
+use crate::{HalfPlane, Intersect, LineSegment, Moments, Shape};
 use glam::Vec2;
 
-impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
+impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
     pub fn is_convex(&self) -> bool {
         let mut sign = 0.0;
         for [a, b, c] in self.vertices_window() {
@@ -18,7 +18,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized> Shape for Polygon<V> {
+impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
     fn contains(&self, point: Vec2) -> bool {
         let mut winding_number = 0;
 
@@ -27,13 +27,13 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Shape for Polygon<V> {
             if v0.y <= point.y {
                 if v1.y > point.y {
                     // Upward crossing - check if point is left of edge
-                    if (v1 - v0).perp_dot(point - v0) > EPS {
+                    if (v1 - v0).perp_dot(point - v0) > 0.0 {
                         winding_number += 1;
                     }
                 }
             } else if v1.y <= point.y {
                 // Downward crossing - check if point is right of edge
-                if (v1 - v0).perp_dot(point - v0) < -1e-9 {
+                if (v1 - v0).perp_dot(point - v0) < 0.0 {
                     winding_number -= 1;
                 }
             }
@@ -57,7 +57,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Shape for Polygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromIterator<Vec2>>
+impl<V: AsRef<[Vec2]> + ?Sized, W: AsRef<[Vec2]> + FromIterator<Vec2>>
     Intersect<HalfPlane, Polygon<W>> for Polygon<V>
 {
     fn intersect(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
@@ -68,6 +68,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
         let mut prev_inside = plane.contains(prev);
         let clip_iter = self
             .vertices()
+            .iter()
             .cloned()
             .flat_map(|v| {
                 let inside = plane.contains(v);
@@ -97,7 +98,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromIterator<Vec2>>
+impl<V: AsRef<[Vec2]> + ?Sized, W: AsRef<[Vec2]> + FromIterator<Vec2>>
     Intersect<Polygon<V>, Polygon<W>> for HalfPlane
 {
     fn intersect(&self, other: &Polygon<V>) -> Option<Polygon<W>> {
@@ -105,14 +106,11 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
     }
 }
 
-impl<
-    U: AsIterator<Item = Vec2> + ?Sized,
-    V: AsIterator<Item = Vec2> + ?Sized,
-    W: AsIterator<Item = Vec2> + FromIterator<Vec2>,
-> Intersect<Polygon<U>, Polygon<W>> for Polygon<V>
+impl<U: AsRef<[Vec2]> + ?Sized, V: AsRef<[Vec2]> + ?Sized, W: AsRef<[Vec2]> + FromIterator<Vec2>>
+    Intersect<Polygon<U>, Polygon<W>> for Polygon<V>
 {
     fn intersect(&self, other: &Polygon<U>) -> Option<Polygon<W>> {
-        let mut result = Polygon::from_iter(self.vertices().copied());
+        let mut result = Polygon::from_iter(self.vertices().iter().copied());
 
         // Sutherland-Hodgman polygon clipping algorithm
         for LineSegment(a, b) in other.edges() {

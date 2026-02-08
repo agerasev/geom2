@@ -1,4 +1,8 @@
+pub mod circle;
 pub mod line;
+
+use core::marker::PhantomData;
+use glam::Vec2;
 
 pub trait Edge: Copy {
     type Vertex: Vertex<Edge = Self>;
@@ -8,85 +12,61 @@ pub trait Vertex: Copy {
     type Edge: Edge<Vertex = Self>;
 }
 
-pub trait AsIterator {
-    type Item;
-    type RefIter<'a>: Iterator<Item = &'a Self::Item>
-    where
-        Self: 'a;
-    fn iter(&self) -> Self::RefIter<'_>;
-}
-impl<T, I: ?Sized> AsIterator for I
-where
-    for<'a> &'a I: IntoIterator<Item = &'a T>,
-{
-    type Item = T;
-    type RefIter<'a>
-        = <&'a I as IntoIterator>::IntoIter
-    where
-        Self: 'a;
-    fn iter(&self) -> Self::RefIter<'_> {
-        self.into_iter()
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
-pub struct Polygon<V: AsIterator + ?Sized> {
+pub struct Polygon<V: AsRef<[T]> + ?Sized, T: Vertex = Vec2> {
+    _ghost: PhantomData<T>,
     pub vertices: V,
 }
 
-impl<V: AsIterator> Polygon<V> {
+impl<T: Vertex, V: AsRef<[T]>> Polygon<V, T> {
     pub fn new(vertices: V) -> Self {
-        Self { vertices }
+        Self {
+            vertices,
+            _ghost: PhantomData,
+        }
     }
 }
 
-impl<V: AsIterator + FromIterator<V::Item>> FromIterator<V::Item> for Polygon<V> {
-    fn from_iter<T: IntoIterator<Item = V::Item>>(iter: T) -> Self {
+impl<T: Vertex, V: AsRef<[T]> + FromIterator<T>> FromIterator<T> for Polygon<V, T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self::new(V::from_iter(iter))
     }
 }
 
-impl<T: PartialEq, U: AsIterator<Item = T> + ?Sized, V: AsIterator<Item = T> + ?Sized>
-    PartialEq<Polygon<U>> for Polygon<V>
+impl<T: Vertex + PartialEq, U: AsRef<[T]> + ?Sized, V: AsRef<[T]> + ?Sized> PartialEq<Polygon<U, T>>
+    for Polygon<V, T>
 {
-    fn eq(&self, other: &Polygon<U>) -> bool {
+    fn eq(&self, other: &Polygon<U, T>) -> bool {
         self.vertices().eq(other.vertices())
     }
 }
 
-impl<V: AsIterator + ?Sized> Polygon<V> {
-    pub fn vertices(&self) -> V::RefIter<'_> {
-        self.vertices.iter()
+impl<T: Vertex, V: AsRef<[T]> + ?Sized> Polygon<V, T> {
+    pub fn vertices(&self) -> &[T] {
+        self.vertices.as_ref()
     }
 
+    pub fn len(&self) -> usize {
+        self.vertices().len()
+    }
     pub fn is_empty(&self) -> bool {
-        self.vertices().next().is_none()
+        self.vertices().is_empty()
     }
 
-    fn vertices_window<const N: usize>(&self) -> impl Iterator<Item = [&V::Item; N]> {
+    fn vertices_window<const N: usize>(&self) -> impl Iterator<Item = [&T; N]> {
         self.vertices()
-            .chain(self.vertices()) // If window size is greater that number of vertices then iterator is empty
+            .iter()
+            .chain(self.vertices().iter()) // If window size is greater that number of vertices then iterator is empty
             .scan([None; N], |w, v| {
                 w.rotate_left(1);
                 w[N - 1] = Some(v);
                 Some(*w)
             })
             .skip(N - 1) // Fill window
-            .zip(self.vertices()) // Take the same number of items as number of vertices
-            .map(|(w, _)| w.map(|v| v.unwrap()))
+            .take(self.len()) // Take the same number of items as number of vertices
+            .map(|w| w.map(|v| v.unwrap()))
     }
-}
 
-impl<V: AsIterator + ?Sized> Polygon<V>
-where
-    for<'a> V::RefIter<'a>: ExactSizeIterator,
-{
-    pub fn len(&self) -> usize {
-        self.vertices.iter().len()
-    }
-}
-
-impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> Polygon<V> {
     pub fn edges(&self) -> impl Iterator<Item = T::Edge> {
         self.vertices_window()
             .map(|[a, b]| T::Edge::from_vertices(a, b))
