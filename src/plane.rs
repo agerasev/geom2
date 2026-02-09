@@ -1,13 +1,13 @@
-use crate::{Line, Moments, Shape};
+use crate::{Bound, Line};
 use glam::Vec2;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct HalfPlane {
-    /// Normal of the half-plane edge (pointing from occuped space to free space).
+    /// Normal of the half-plane edge, pointing from free space to occuped space.
     pub normal: Vec2,
-    /// Signed distance from the origin to the edge of the half-plane.
+    /// Minimal distance from the origin to the half-plane edge.
     ///
-    /// If the origin is inside then it is negative, when origin is outside then it is positive.
+    /// If the origin is outside of half-plane then it is positive, when origin is inside  it is negative.
     pub offset: f32,
 }
 
@@ -16,7 +16,7 @@ impl HalfPlane {
     pub fn from_normal(point: Vec2, normal: Vec2) -> Self {
         Self {
             normal,
-            offset: -point.dot(normal),
+            offset: point.dot(normal),
         }
     }
 
@@ -24,34 +24,29 @@ impl HalfPlane {
     ///
     /// When looking from the first point to the second one, then the left side is occupied (inside) and the right side is free (outside).
     pub fn from_edge(a: Vec2, b: Vec2) -> Self {
-        Self::from_normal(a, (a - b).perp().normalize())
+        Self::from_normal(a, (b - a).perp().normalize())
     }
 
+    /// Minimal distance to the edge from the `point`.
+    /// It is positive if `point` is inside of the half-plane, and negative if outside.
     pub fn distance(&self, point: Vec2) -> f32 {
-        point.dot(self.normal) + self.offset
+        point.dot(self.normal) - self.offset
     }
 
-    /// Get some point on the boundary line
+    /// Get some point on the edge.
     fn boundary_point(&self) -> Vec2 {
-        self.normal * (-self.offset)
+        self.normal * self.offset
     }
 
     pub fn edge(&self) -> Line {
         let p = self.boundary_point();
-        Line(p, p + self.normal.perp())
+        Line(p, p - self.normal.perp())
     }
 }
 
-impl Shape for HalfPlane {
-    fn contains(&self, point: Vec2) -> bool {
-        self.distance(point) <= 0.0
-    }
-
-    fn moments(&self) -> Moments {
-        Moments {
-            centroid: Vec2::INFINITY,
-            area: f32::INFINITY,
-        }
+impl Bound for HalfPlane {
+    fn winding_number_2(&self, point: Vec2) -> i32 {
+        self.distance(point).signum() as i32
     }
 }
 

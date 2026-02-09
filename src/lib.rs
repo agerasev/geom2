@@ -17,28 +17,39 @@ use glam::Vec2;
 
 pub const EPS: f32 = 1e-8;
 
-/// Specific geometric shape.
-pub trait Shape {
+/// Shape that has an oriented edge.
+pub trait Bound {
     // fn bounding_box(&self) -> (Vec2, Vec2);
 
-    /// Check that the `point` is inside the shape.
+    /// The angle of edge rotation around point divided by PI.
     ///
-    /// Result is unspecified within boundary [`EPS`]-neighbourhood.  
-    fn contains(&self, point: Vec2) -> bool;
+    /// E.g. a non-self-intersecting counterclockwise polygon returns `2`
+    /// for points inside of it, and `0` for points outside.
+    ///
+    /// Result is unspecified within boundary [`EPS`]-neighbourhood.
+    fn winding_number_2(&self, point: Vec2) -> i32;
 
-    /// Moments of the shape
-    fn moments(&self) -> Moments;
-    fn area(&self) -> f32 {
-        self.moments().area
-    }
-    fn centroid(&self) -> Vec2 {
-        self.moments().centroid
+    /// Check that the `point` is inside the shape.
+    fn contains(&self, point: Vec2) -> bool {
+        self.winding_number_2(point) > 0
     }
 }
 
-/// Moments of the shape
+pub trait Integrate {
+    /// Moment of the shape
+    fn moment(&self) -> Moment;
+
+    fn area(&self) -> f32 {
+        self.moment().area
+    }
+    fn centroid(&self) -> Vec2 {
+        self.moment().centroid
+    }
+}
+
+/// Moment of the shape
 #[derive(Clone, Copy, Default, PartialEq, Debug)]
-pub struct Moments {
+pub struct Moment {
     /// Zeroth moment
     pub area: f32,
     /// First moment

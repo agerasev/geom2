@@ -1,6 +1,6 @@
 use glam::Vec2;
 
-use crate::{Arc, ArcVertex, Moments, Polygon, Shape};
+use crate::{Arc, ArcVertex, Moment, Polygon, Shape};
 
 impl<V: AsRef<[ArcVertex]> + ?Sized> Shape for Polygon<V, ArcVertex> {
     fn contains(&self, point: Vec2) -> bool {
@@ -30,11 +30,11 @@ impl<V: AsRef<[ArcVertex]> + ?Sized> Shape for Polygon<V, ArcVertex> {
         winding_number != 0
     }
 
-    fn moments(&self) -> Moments {
+    fn moments(&self) -> Moment {
         // Shoelace formula
         let mut area = 0.0;
         let mut centroid = Vec2::ZERO;
-        for Arc {
+        for arc @ Arc {
             bounds: (a, b),
             sagitta,
         } in self.edges()
@@ -45,6 +45,6 @@ impl<V: AsRef<[ArcVertex]> + ?Sized> Shape for Polygon<V, ArcVertex> {
         }
         area = area.abs() * 0.5;
         centroid /= 6.0 * area;
-        Moments { area, centroid }
+        Moment { area, centroid }
     }
 }

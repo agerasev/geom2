@@ -1,5 +1,5 @@
 use super::Polygon;
-use crate::{HalfPlane, Intersect, LineSegment, Moments, Shape};
+use crate::{HalfPlane, Intersect, LineSegment, Moment, Shape};
 use glam::Vec2;
 
 impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
@@ -42,7 +42,7 @@ impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
         winding_number != 0
     }
 
-    fn moments(&self) -> Moments {
+    fn moments(&self) -> Moment {
         // Shoelace formula
         let mut area = 0.0;
         let mut centroid = Vec2::ZERO;
@@ -53,7 +53,7 @@ impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
         }
         area = area.abs() * 0.5;
         centroid /= 6.0 * area;
-        Moments { area, centroid }
+        Moment { area, centroid }
     }
 }
 
@@ -139,7 +139,7 @@ mod tests {
         ]);
         assert_eq!(
             square.moments(),
-            Moments {
+            Moment {
                 area: 6.0,
                 centroid: Vec2::new(1.5, 1.0)
             }

@@ -1,4 +1,4 @@
-use crate::{EPS, Edge, HalfPlane, Intersect, LineSegment, Moments, Shape, Vertex};
+use crate::{Bound, EPS, Edge, HalfPlane, Integrate, Intersect, LineSegment, Moment, Vertex};
 use core::f32::consts::PI;
 use glam::Vec2;
 
@@ -8,13 +8,19 @@ pub struct Circle {
     pub radius: f32,
 }
 
-impl Shape for Circle {
-    fn contains(&self, point: Vec2) -> bool {
-        (self.center - point).length_squared() <= self.radius.powi(2)
+impl Bound for Circle {
+    fn winding_number_2(&self, point: Vec2) -> i32 {
+        if (self.center - point).length_squared() <= self.radius.powi(2) {
+            2 * self.radius.signum() as i32
+        } else {
+            0
+        }
     }
+}
 
-    fn moments(&self) -> Moments {
-        Moments {
+impl Integrate for Circle {
+    fn moment(&self) -> Moment {
+        Moment {
             centroid: self.center,
             area: PI * self.radius.powi(2),
         }
@@ -62,6 +68,8 @@ impl CircleSegment {
     }
 }
 
+const APPROX_DISTANCE: f32 = 1e-4;
+
 impl Shape for CircleSegment {
     fn contains(&self, point: Vec2) -> bool {
         let (a, b) = self.0.bounds;
@@ -83,12 +91,12 @@ impl Shape for CircleSegment {
         }
     }
 
-    fn moments(&self) -> Moments {
+    fn moments(&self) -> Moment {
         let (a, b) = self.0.bounds;
         let c = 0.5 * (a + b);
         let s = self.0.sagitta;
         if s.abs() < EPS {
-            return Moments {
+            return Moment {
                 area: 0.0,
                 centroid: c,
             };
@@ -99,7 +107,7 @@ impl Shape for CircleSegment {
 
         let cosine = 1.0 - s / radius;
         let sine = h / radius;
-        let (area, offset) = if cosine.abs() < 1.0 - EPS {
+        let (area, offset) = if cosine.abs() < 1.0 - APPROX_DISTANCE {
             let area = cosine.acos() - cosine * sine;
             (area, (2.0 / 3.0) * sine.powi(3) / area)
         } else {
@@ -115,7 +123,7 @@ impl Shape for CircleSegment {
         };
 
         let normal = (b - a).perp() / (2.0 * h);
-        Moments {
+        Moment {
             area: area * radius.powi(2),
             centroid: c + normal * (s + radius * (offset - 1.0)),
         }
@@ -163,19 +171,19 @@ impl CircleSegmentMoments {
     }
 }
 
-impl Intersect<Circle, Moments> for HalfPlane {
-    fn intersect(&self, circle: &Circle) -> Option<Moments> {
+impl Intersect<Circle, Moment> for HalfPlane {
+    fn intersect(&self, circle: &Circle) -> Option<Moment> {
         let plane = self;
         let dist = circle.center.dot(plane.normal) - plane.offset;
         if dist < circle.radius {
             if dist > -circle.radius {
                 let segment = CircleSegmentMoments::new(circle.radius, dist);
-                Some(Moments {
+                Some(Moment {
                     area: segment.area,
                     centroid: circle.center - plane.normal * segment.offset,
                 })
             } else {
-                Some(Moments {
+                Some(Moment {
                     area: PI * circle.radius.powi(2),
                     centroid: circle.center,
                 })
@@ -186,14 +194,14 @@ impl Intersect<Circle, Moments> for HalfPlane {
     }
 }
 
-impl Intersect<HalfPlane, Moments> for Circle {
-    fn intersect(&self, other: &HalfPlane) -> Option<Moments> {
+impl Intersect<HalfPlane, Moment> for Circle {
+    fn intersect(&self, other: &HalfPlane) -> Option<Moment> {
         other.intersect(self)
     }
 }
 
-impl Intersect<Circle, Moments> for Circle {
-    fn intersect(&self, other: &Circle) -> Option<Moments> {
+impl Intersect<Circle, Moment> for Circle {
+    fn intersect(&self, other: &Circle) -> Option<Moment> {
         // Vector pointing from `self.center` to `other.center`
         let vec = other.center - self.center;
         // Distance between the centers of the circles
@@ -211,7 +219,7 @@ impl Intersect<Circle, Moments> for Circle {
                 let other_segment = CircleSegmentMoments::new(other.radius, other_offset);
 
                 let area = self_segment.area + other_segment.area;
-                Some(Moments {
+                Some(Moment {
                     area,
                     centroid: ((self.center + dir * self_segment.offset) * self_segment.area
                         + (other.center - dir * other_segment.offset) * other_segment.area)
@@ -223,7 +231,7 @@ impl Intersect<Circle, Moments> for Circle {
                 } else {
                     (other.radius, other.center)
                 };
-                Some(Moments {
+                Some(Moment {
                     area: PI * minr.powi(2),
                     centroid: minc,
                 })
@@ -263,7 +271,7 @@ mod tests {
 
     #[test]
     fn empty_segment() {
-        let Moments { area, centroid } = CircleSegment(Arc {
+        let Moment { area, centroid } = CircleSegment(Arc {
             bounds: (Vec2::new(-EPS, 0.0), Vec2::new(EPS, 0.0)),
             sagitta: 0.0,
         })
@@ -275,7 +283,7 @@ mod tests {
 
     #[test]
     fn full_segment() {
-        let Moments { area, centroid } = CircleSegment(Arc {
+        let Moment { area, centroid } = CircleSegment(Arc {
             bounds: (Vec2::new(-EPS, 0.0), Vec2::new(EPS, 0.0)),
             sagitta: 2.0 * R,
         })
