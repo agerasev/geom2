@@ -1,4 +1,4 @@
-use crate::{Bound, EPS, Edge, HalfPlane, Integrate, Intersect, LineSegment, Moment, Vertex};
+use crate::{Bounded, EPS, Edge, HalfPlane, Integrate, Intersect, LineSegment, Moment, Vertex};
 use core::f32::consts::PI;
 use glam::Vec2;
 
@@ -8,7 +8,7 @@ pub struct Circle {
     pub radius: f32,
 }
 
-impl Bound for Circle {
+impl Bounded for Circle {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         if (self.center - point).length_squared() <= self.radius.powi(2) {
             2 * self.radius.signum() as i32
@@ -33,13 +33,33 @@ pub enum CircleOrSegment {
     Segment(Arc),
 }
 
+/// Circle arc.
+///
+/// Defined by:
+/// + `bounds` — vertices on its ends,
+/// + `sagitta` — distance from midpoint of the chord to the midpoint of the arc.
+///
+/// ```text
+///      ..-+-..
+///    *    |    * arc
+///  /      | s    \
+/// |       |       |
+/// +-------+-------+
+/// b1    chord     b0
+/// ```
+///
+/// Where `(b0, b1)` — end points (bounds), `s` - sagitta.
+///
+/// Sagitta is signed. When looking from the first end to the second one,
+/// the positive sagitta will make the arc to the right side of the chord,
+/// while the negative sagitta — to the left side.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Arc {
     pub bounds: (Vec2, Vec2),
     pub sagitta: f32,
 }
 
-/// One bound point of arc with the sagitta of the arc to the next bound point.
+/// One end point of an [`Arc`] with its sagitta.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct ArcVertex {
     pub point: Vec2,
@@ -59,6 +79,7 @@ impl Vertex for ArcVertex {
     type Edge = Arc;
 }
 
+/// Circle segment bounded by an arc and its chord.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct CircleSegment(pub Arc);
 
@@ -68,34 +89,39 @@ impl CircleSegment {
     }
 }
 
-const APPROX_DISTANCE: f32 = 1e-4;
-
-impl Shape for CircleSegment {
-    fn contains(&self, point: Vec2) -> bool {
+impl Bounded for CircleSegment {
+    fn winding_number_2(&self, point: Vec2) -> i32 {
         let (a, b) = self.0.bounds;
         let c = 0.5 * (a + b);
-        let s = self.0.sagitta;
-        if s.abs() < EPS {
-            return false;
+        let s = self.0.sagitta.abs();
+        if s < EPS {
+            return 0;
         }
 
         let h = 0.5 * (b - a).length();
         let radius = (h.powi(2) + s.powi(2)) / (2.0 * s);
-        let normal = (b - a).perp() / (2.0 * h);
+        let normal = -(b - a).perp() / (2.0 * h) * self.0.sagitta.signum();
         let center = c + normal * (s - radius);
 
-        if (Circle { center, radius }).contains(point) {
-            (point - c).dot(normal) > -EPS
+        if (Circle { center, radius }).contains(point) && (point - c).dot(normal) > 0.0 {
+            2 * self.0.sagitta.signum() as i32
         } else {
-            false
+            0
         }
     }
+}
 
-    fn moments(&self) -> Moment {
+/// Maximum ratio between sagitta and radius where the circle arc can be approximated by the parabola.
+const APPROX_CIRCLE: f32 = 1e-4;
+
+extern crate std;
+
+impl Integrate for CircleSegment {
+    fn moment(&self) -> Moment {
         let (a, b) = self.0.bounds;
         let c = 0.5 * (a + b);
-        let s = self.0.sagitta;
-        if s.abs() < EPS {
+        let s = self.0.sagitta.abs();
+        if s < EPS {
             return Moment {
                 area: 0.0,
                 centroid: c,
@@ -107,22 +133,22 @@ impl Shape for CircleSegment {
 
         let cosine = 1.0 - s / radius;
         let sine = h / radius;
-        let (area, offset) = if cosine.abs() < 1.0 - APPROX_DISTANCE {
+        let (area, offset) = if s > APPROX_CIRCLE * radius {
             let area = cosine.acos() - cosine * sine;
             (area, (2.0 / 3.0) * sine.powi(3) / area)
         } else {
             // Approximate circle by parabola
             let y = 1.0 - cosine.abs();
-            let a = (4.0 / 3.0) * (2.0 * y).sqrt() * y;
-            let b = 1.0 - (3.0 / 10.0) * y;
+            let area = (4.0 / 3.0) * (2.0 * y).sqrt() * y;
+            let offset = 1.0 - (3.0 / 10.0) * y;
             if cosine > 0.0 {
-                (a, b)
+                (area, offset)
             } else {
-                (PI - a, -b * a / (PI - a))
+                (PI - area, -offset * area / (PI - area))
             }
         };
 
-        let normal = (b - a).perp() / (2.0 * h);
+        let normal = -(b - a).perp() / (2.0 * h) * self.0.sagitta.signum();
         Moment {
             area: area * radius.powi(2),
             centroid: c + normal * (s + radius * (offset - 1.0)),
@@ -272,10 +298,10 @@ mod tests {
     #[test]
     fn empty_segment() {
         let Moment { area, centroid } = CircleSegment(Arc {
-            bounds: (Vec2::new(-EPS, 0.0), Vec2::new(EPS, 0.0)),
+            bounds: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
             sagitta: 0.0,
         })
-        .moments();
+        .moment();
 
         assert_abs_diff_eq!(area, 0.0, epsilon = EPS);
         assert_abs_diff_eq!(centroid, Vec2::ZERO, epsilon = EPS);
@@ -284,10 +310,10 @@ mod tests {
     #[test]
     fn full_segment() {
         let Moment { area, centroid } = CircleSegment(Arc {
-            bounds: (Vec2::new(-EPS, 0.0), Vec2::new(EPS, 0.0)),
+            bounds: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
             sagitta: 2.0 * R,
         })
-        .moments();
+        .moment();
 
         assert_abs_diff_eq!(area, PI * R.powi(2), epsilon = EPS);
         assert_abs_diff_eq!(centroid, Vec2::new(0.0, R), epsilon = EPS);
@@ -297,7 +323,7 @@ mod tests {
     fn half_segment() {
         assert_eq!(
             CircleSegment(Arc {
-                bounds: (Vec2::new(-R, 0.0), Vec2::new(R, 0.0)),
+                bounds: (Vec2::new(R, 0.0), Vec2::new(-R, 0.0)),
                 sagitta: R,
             })
             .area(),
@@ -308,7 +334,7 @@ mod tests {
     #[test]
     fn segment_contains() {
         let segment = CircleSegment(Arc {
-            bounds: (Vec2::new(1.0, 1.0), Vec2::new(4.0, 1.0)),
+            bounds: (Vec2::new(4.0, 1.0), Vec2::new(1.0, 1.0)),
             sagitta: 4.0,
         });
 
@@ -339,8 +365,8 @@ mod tests {
                 let y = (1.0 - (1.0 - x).powi(2)).sqrt();
                 let ref_segment = CircleSegment(Arc {
                     bounds: (
-                        Vec2::new(x as f32, -y as f32),
                         Vec2::new(x as f32, y as f32),
+                        Vec2::new(x as f32, -y as f32),
                     ),
                     sagitta: x as f32,
                 });

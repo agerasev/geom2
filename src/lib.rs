@@ -18,7 +18,7 @@ use glam::Vec2;
 pub const EPS: f32 = 1e-8;
 
 /// Shape that has an oriented edge.
-pub trait Bound {
+pub trait Bounded {
     // fn bounding_box(&self) -> (Vec2, Vec2);
 
     /// The angle of edge rotation around point divided by PI.

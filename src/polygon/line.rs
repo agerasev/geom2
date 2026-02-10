@@ -1,5 +1,5 @@
 use super::Polygon;
-use crate::{HalfPlane, Intersect, LineSegment, Moment, Shape};
+use crate::{Bounded, HalfPlane, Integrate, Intersect, LineSegment, Moment};
 use glam::Vec2;
 
 impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
@@ -18,8 +18,8 @@ impl<V: AsRef<[Vec2]> + ?Sized> Polygon<V> {
     }
 }
 
-impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
-    fn contains(&self, point: Vec2) -> bool {
+impl<V: AsRef<[Vec2]> + ?Sized> Bounded for Polygon<V> {
+    fn winding_number_2(&self, point: Vec2) -> i32 {
         let mut winding_number = 0;
 
         for LineSegment(v0, v1) in self.edges() {
@@ -39,10 +39,12 @@ impl<V: AsRef<[Vec2]> + ?Sized> Shape for Polygon<V> {
             }
         }
 
-        winding_number != 0
+        winding_number
     }
+}
 
-    fn moments(&self) -> Moment {
+impl<V: AsRef<[Vec2]> + ?Sized> Integrate for Polygon<V> {
+    fn moment(&self) -> Moment {
         // Shoelace formula
         let mut area = 0.0;
         let mut centroid = Vec2::ZERO;
@@ -138,7 +140,7 @@ mod tests {
             Vec2::new(0.0, 2.0),
         ]);
         assert_eq!(
-            square.moments(),
+            square.moment(),
             Moment {
                 area: 6.0,
                 centroid: Vec2::new(1.5, 1.0)
@@ -231,7 +233,7 @@ mod tests {
         ]);
 
         // Clip with a vertical plane at x = 1
-        let plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(1.0, 0.0));
+        let plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(-1.0, 0.0));
         let clipped: Polygon<Vec<Vec2>> = square.intersect(&plane).unwrap();
 
         // Should get a rectangle from x=0 to x=1

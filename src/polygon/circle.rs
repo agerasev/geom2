@@ -1,9 +1,9 @@
 use glam::Vec2;
 
-use crate::{Arc, ArcVertex, Moment, Polygon, Shape};
+use crate::{Arc, ArcVertex, Bounded, Integrate, Moment, Polygon};
 
-impl<V: AsRef<[ArcVertex]> + ?Sized> Shape for Polygon<V, ArcVertex> {
-    fn contains(&self, point: Vec2) -> bool {
+impl<V: AsRef<[ArcVertex]> + ?Sized> Bounded for Polygon<V, ArcVertex> {
+    fn winding_number_2(&self, point: Vec2) -> i32 {
         let mut winding_number = 0;
 
         for Arc {
@@ -27,10 +27,12 @@ impl<V: AsRef<[ArcVertex]> + ?Sized> Shape for Polygon<V, ArcVertex> {
             }
         }
 
-        winding_number != 0
+        winding_number
     }
+}
 
-    fn moments(&self) -> Moment {
+impl<V: AsRef<[ArcVertex]> + ?Sized> Integrate for Polygon<V, ArcVertex> {
+    fn moment(&self) -> Moment {
         // Shoelace formula
         let mut area = 0.0;
         let mut centroid = Vec2::ZERO;
