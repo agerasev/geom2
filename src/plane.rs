@@ -52,12 +52,12 @@ impl Bounded for HalfPlane {
 
 #[cfg(test)]
 mod tests {
-    const EPS: f32 = 1e-6;
-
     use super::*;
     use approx::assert_abs_diff_eq;
     use core::f32::consts::PI;
     use glam::Vec2;
+
+    const TEST_EPS: f32 = 1e-6;
 
     #[test]
     fn is_inside() {
@@ -116,9 +116,21 @@ mod tests {
                 offset: 2.0,
             };
 
-            assert_abs_diff_eq!(plane.distance(Vec2::new(10.0, 2.0)), 0.0, epsilon = EPS);
-            assert_abs_diff_eq!(plane.distance(Vec2::new(10.0, 3.0)), 1.0, epsilon = EPS);
-            assert_abs_diff_eq!(plane.distance(Vec2::new(10.0, 1.0)), -1.0, epsilon = EPS);
+            assert_abs_diff_eq!(
+                plane.distance(Vec2::new(10.0, 2.0)),
+                0.0,
+                epsilon = TEST_EPS
+            );
+            assert_abs_diff_eq!(
+                plane.distance(Vec2::new(10.0, 3.0)),
+                1.0,
+                epsilon = TEST_EPS
+            );
+            assert_abs_diff_eq!(
+                plane.distance(Vec2::new(10.0, 1.0)),
+                -1.0,
+                epsilon = TEST_EPS
+            );
         }
 
         {
@@ -126,17 +138,17 @@ mod tests {
             let plane = HalfPlane::from_normal(point_on_boundary, Vec2::from_angle(PI / 4.0));
 
             // Point on boundary should have zero distance
-            assert_abs_diff_eq!(plane.distance(point_on_boundary), 0.0, epsilon = EPS);
+            assert_abs_diff_eq!(plane.distance(point_on_boundary), 0.0, epsilon = TEST_EPS);
 
             // Move along normal direction (inside)
             let inside_point = point_on_boundary + plane.normal * 2.0;
             assert!(plane.contains(inside_point));
-            assert_abs_diff_eq!(plane.distance(inside_point), 2.0, epsilon = EPS);
+            assert_abs_diff_eq!(plane.distance(inside_point), 2.0, epsilon = TEST_EPS);
 
             // Move opposite to normal direction (outside)
             let outside_point = point_on_boundary - plane.normal * 2.0;
             assert!(!plane.contains(outside_point));
-            assert_abs_diff_eq!(plane.distance(outside_point), -2.0, epsilon = EPS);
+            assert_abs_diff_eq!(plane.distance(outside_point), -2.0, epsilon = TEST_EPS);
         }
     }
 
@@ -148,7 +160,7 @@ mod tests {
         };
 
         let boundary_point = plane.boundary_point();
-        assert_abs_diff_eq!(plane.distance(boundary_point), 0.0, epsilon = EPS);
+        assert_abs_diff_eq!(plane.distance(boundary_point), 0.0, epsilon = TEST_EPS);
     }
 
     #[test]
@@ -161,13 +173,13 @@ mod tests {
         let line = plane.edge();
 
         // Check that start point is on boundary
-        assert_abs_diff_eq!(plane.distance(line.0), 0.0, epsilon = EPS);
+        assert_abs_diff_eq!(plane.distance(line.0), 0.0, epsilon = TEST_EPS);
 
         // Check that direction is perpendicular to normal
         let line_dir = line.1 - line.0;
-        assert_abs_diff_eq!(line_dir.dot(plane.normal), 0.0, epsilon = EPS);
+        assert_abs_diff_eq!(line_dir.dot(plane.normal), 0.0, epsilon = TEST_EPS);
 
         // Check that second point is also on boundary
-        assert_abs_diff_eq!(plane.distance(line.1), 0.0, epsilon = EPS);
+        assert_abs_diff_eq!(plane.distance(line.1), 0.0, epsilon = TEST_EPS);
     }
 }

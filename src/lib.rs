@@ -4,12 +4,14 @@ mod circle;
 mod line;
 mod plane;
 mod polygon;
+mod util;
 
 pub use self::{
     circle::{Arc, ArcVertex, Circle, CircleOrSegment, CircleSegment},
     line::{Line, LineSegment},
     plane::HalfPlane,
     polygon::{Edge, Polygon, Vertex},
+    util::{AsIterator, AsMap},
 };
 
 use core::f32;
@@ -47,6 +49,11 @@ pub trait Integrate {
     }
 }
 
+pub trait Intersect<T: Intersect<Self, U> + ?Sized, U> {
+    /// Abstract intersection of two figures.
+    fn intersect(&self, other: &T) -> Option<U>;
+}
+
 /// Moment of the shape
 #[derive(Clone, Copy, Default, PartialEq, Debug)]
 pub struct Moment {
@@ -56,7 +63,13 @@ pub struct Moment {
     pub centroid: Vec2,
 }
 
-pub trait Intersect<T: Intersect<Self, U> + ?Sized, U> {
-    /// Abstract intersection of two figures.
-    fn intersect(&self, other: &T) -> Option<U>;
+impl Moment {
+    pub fn merge(self, other: Self) -> Self {
+        let area = self.area + other.area;
+        if area.abs() < EPS {
+            return Self::default();
+        }
+        let centroid = (self.centroid * self.area + other.centroid * other.area) / area;
+        Self { area, centroid }
+    }
 }
