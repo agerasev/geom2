@@ -1,5 +1,6 @@
 #![no_std]
 
+mod arc;
 mod circle;
 mod line;
 mod plane;
@@ -7,7 +8,8 @@ mod polygon;
 mod util;
 
 pub use self::{
-    circle::{Arc, ArcVertex, Circle, CircleSegment},
+    arc::{Arc, ArcVertex, CircleSegment},
+    circle::Circle,
     line::{Line, LineSegment},
     plane::HalfPlane,
     polygon::{Edge, Polygon, Vertex},
