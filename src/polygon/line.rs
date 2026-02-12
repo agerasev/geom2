@@ -1,5 +1,5 @@
 use crate::{
-    AsIterator, Bounded, EPS, HalfPlane, Integrate, IntersectTo, LineSegment, Moment, Polygon,
+    AsIterator, Closed, EPS, HalfPlane, Integrable, IntersectTo, LineSegment, Moment, Polygon,
 };
 use glam::Vec2;
 
@@ -19,7 +19,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized> Bounded for Polygon<V> {
+impl<V: AsIterator<Item = Vec2> + ?Sized> Closed for Polygon<V> {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         let mut winding_number = 0;
 
@@ -44,7 +44,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Bounded for Polygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized> Integrate for Polygon<V> {
+impl<V: AsIterator<Item = Vec2> + ?Sized> Integrable for Polygon<V> {
     fn moment(&self) -> Moment {
         // Shoelace formula
         let mut area = 0.0;

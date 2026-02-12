@@ -1,4 +1,4 @@
-use crate::{Bounded, HalfPlane};
+use crate::{Closed, HalfPlane};
 use approx::assert_abs_diff_eq;
 use core::f32::consts::PI;
 use glam::Vec2;

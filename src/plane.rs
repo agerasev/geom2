@@ -1,4 +1,4 @@
-use crate::{Bounded, Line};
+use crate::{Closed, Line};
 use glam::Vec2;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -44,7 +44,7 @@ impl HalfPlane {
     }
 }
 
-impl Bounded for HalfPlane {
+impl Closed for HalfPlane {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         -self.distance(point).signum() as i32
     }

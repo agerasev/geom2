@@ -1,6 +1,5 @@
-use core::f32::consts::PI;
-
-use crate::{Bounded, Disk, EPS, Edge, Integrate, LineSegment, Moment, Vertex};
+use crate::{Closed, Disk, EPS, Edge, Integrable, LineSegment, Moment, Vertex};
+use core::{f32::consts::PI, ops::Deref};
 use glam::Vec2;
 
 /// Circular arc.
@@ -59,7 +58,14 @@ impl Vertex for ArcVertex {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct DiskSegment(pub Arc);
 
-impl Bounded for DiskSegment {
+impl Deref for DiskSegment {
+    type Target = Arc;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Closed for DiskSegment {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         let (a, b) = self.0.points;
         let c = 0.5 * (a + b);
@@ -84,9 +90,7 @@ impl Bounded for DiskSegment {
 /// Maximum ratio between sagitta and radius where the circle arc can be approximated by the parabola.
 const APPROX_CIRCLE: f32 = 1e-4;
 
-extern crate std;
-
-impl Integrate for DiskSegment {
+impl Integrable for DiskSegment {
     fn moment(&self) -> Moment {
         let (a, b) = self.0.points;
         let c = 0.5 * (a + b);

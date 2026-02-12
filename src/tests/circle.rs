@@ -1,6 +1,6 @@
 extern crate std;
 
-use crate::{Bounded, Disk, HalfPlane, Integrate, Intersect};
+use crate::{Closed, Disk, HalfPlane, Integrable, Intersect};
 use approx::assert_abs_diff_eq;
 use either::Either;
 use glam::Vec2;

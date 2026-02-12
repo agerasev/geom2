@@ -1,5 +1,5 @@
 use crate::{
-    Arc, ArcVertex, Bounded, DiskSegment, HalfPlane, Integrate, Intersect, Moment, Polygon,
+    Arc, ArcVertex, Closed, DiskSegment, HalfPlane, Integrable, Intersect, Moment, Polygon,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -27,7 +27,7 @@ impl Deref for Disk {
     }
 }
 
-impl Bounded for Disk {
+impl Closed for Disk {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         if (self.center - point).length_squared() <= self.radius.powi(2) {
             2 * self.radius.signum() as i32
@@ -37,7 +37,7 @@ impl Bounded for Disk {
     }
 }
 
-impl Integrate for Disk {
+impl Integrable for Disk {
     fn moment(&self) -> Moment {
         Moment {
             centroid: self.center,

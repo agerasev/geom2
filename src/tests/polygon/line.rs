@@ -1,6 +1,6 @@
 extern crate std;
 
-use crate::{Bounded, HalfPlane, Integrate, IntersectTo, Moment, Polygon};
+use crate::{Closed, HalfPlane, Integrable, IntersectTo, Moment, Polygon};
 use glam::Vec2;
 use std::vec::Vec;
 

@@ -1,4 +1,4 @@
-use crate::{Arc, Bounded, DiskSegment, EPS, Integrate, Moment};
+use crate::{Arc, Closed, DiskSegment, EPS, Integrable, Moment};
 use approx::assert_abs_diff_eq;
 use core::f32::consts::PI;
 use glam::Vec2;

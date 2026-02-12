@@ -1,4 +1,4 @@
-use crate::{ArcVertex, AsIterator, Bounded, DiskSegment, Integrate, Moment, Polygon};
+use crate::{ArcVertex, AsIterator, Closed, DiskSegment, Integrable, Moment, Polygon};
 use glam::Vec2;
 
 impl<V: AsIterator<Item = ArcVertex> + ?Sized> Polygon<V, ArcVertex> {
@@ -7,7 +7,7 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> Polygon<V, ArcVertex> {
     }
 }
 
-impl<V: AsIterator<Item = ArcVertex> + ?Sized> Bounded for Polygon<V, ArcVertex> {
+impl<V: AsIterator<Item = ArcVertex> + ?Sized> Closed for Polygon<V, ArcVertex> {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         let mut winding_number = self.as_polygon().winding_number_2(point);
 
@@ -19,7 +19,7 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> Bounded for Polygon<V, ArcVertex>
     }
 }
 
-impl<V: AsIterator<Item = ArcVertex> + ?Sized> Integrate for Polygon<V, ArcVertex> {
+impl<V: AsIterator<Item = ArcVertex> + ?Sized> Integrable for Polygon<V, ArcVertex> {
     fn moment(&self) -> Moment {
         let mut moment = self.as_polygon().moment();
 

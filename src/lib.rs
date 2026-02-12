@@ -24,10 +24,8 @@ use glam::Vec2;
 
 pub const EPS: f32 = 1e-8;
 
-/// Shape that has an oriented edge.
-pub trait Bounded {
-    // fn bounding_box(&self) -> (Vec2, Vec2);
-
+/// Shape that has an (oriented) edge.
+pub trait Closed {
     /// The angle of edge rotation around point divided by PI.
     ///
     /// E.g. a non-self-intersecting counterclockwise polygon returns `2`
@@ -42,7 +40,7 @@ pub trait Bounded {
     }
 }
 
-pub trait Integrate {
+pub trait Integrable {
     /// Moment of the shape
     fn moment(&self) -> Moment;
 
