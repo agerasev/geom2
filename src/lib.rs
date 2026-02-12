@@ -7,6 +7,9 @@ mod plane;
 mod polygon;
 mod util;
 
+#[cfg(test)]
+mod tests;
+
 pub use self::{
     arc::{Arc, ArcVertex, DiskSegment},
     circle::{Circle, Disk},
