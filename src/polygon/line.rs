@@ -68,25 +68,25 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
     IntersectTo<HalfPlane, Polygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
-        let mut prev = match self.vertices().last() {
+        let mut prev = match self.vertices().next() {
             Some(p) => *p,
             None => return None,
         };
         let mut prev_inside = plane.contains(prev);
-        let clip_iter = self
-            .vertices()
+        let clip_iter = (self.vertices().skip(1))
+            .chain(self.vertices().next())
             .copied()
             .flat_map(|v| {
                 let inside = plane.contains(v);
                 let ret = match (prev_inside, inside) {
-                    (true, true) => [None, Some(v)],
+                    (true, true) => [Some(prev), None],
                     (true, false) => [
-                        None,
+                        Some(prev),
                         Some(plane.edge().intersect_to(&LineSegment(prev, v)).unwrap()),
                     ],
                     (false, true) => [
+                        None,
                         Some(plane.edge().intersect_to(&LineSegment(prev, v)).unwrap()),
-                        Some(v),
                     ],
                     (false, false) => [None, None],
                 };

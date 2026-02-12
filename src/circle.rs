@@ -1,5 +1,5 @@
 use crate::{
-    Arc, ArcVertex, Closed, DiskSegment, HalfPlane, Integrable, Intersect, Moment, Polygon,
+    Arc, ArcVertex, Closed, DiskSegment, HalfPlane, Integrable, Intersect, Line, Moment, Polygon,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -17,6 +17,9 @@ pub struct Disk(pub Circle);
 impl Disk {
     pub fn new(center: Vec2, radius: f32) -> Self {
         Disk(Circle { center, radius })
+    }
+    pub fn edge(&self) -> Circle {
+        self.0
     }
 }
 
@@ -43,6 +46,39 @@ impl Integrable for Disk {
             centroid: self.center,
             area: PI * self.radius.powi(2),
         }
+    }
+}
+
+impl Intersect<Circle> for Line {
+    type Output = [Vec2; 2];
+    fn intersect(&self, circle: &Circle) -> Option<Self::Output> {
+        circle.intersect(self)
+    }
+}
+
+impl Intersect<Line> for Circle {
+    type Output = [Vec2; 2];
+    fn intersect(&self, line: &Line) -> Option<Self::Output> {
+        if line.is_degenerate() {
+            return None;
+        }
+        // Line direction
+        let d = (line.1 - line.0).sqrt();
+        // Some point on the line (relative to the circle center)
+        let p = line.0 - self.center;
+        // The closest point on the line to the circle center (relative to the circle center)
+        let m = p - p.project_onto(d);
+        let h2 = self.radius.powi(2) - m.length_squared();
+        if h2 < 0.0 {
+            // There's no intersection
+            return None;
+        }
+        // Half length of the chord
+        let h = h2.sqrt();
+
+        let midpoint = self.center + m;
+        let arm = h * d;
+        Some([midpoint - arm, midpoint + arm])
     }
 }
 
