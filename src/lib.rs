@@ -20,6 +20,7 @@ pub use self::{
 };
 
 use core::f32;
+use either::Either;
 use glam::Vec2;
 
 pub const EPS: f32 = 1e-8;
@@ -86,5 +87,41 @@ impl Moment {
         }
         let centroid = (self.centroid * self.area + other.centroid * other.area) / area;
         Self { area, centroid }
+    }
+}
+
+impl<T: Closed> Closed for Option<T> {
+    fn winding_number_2(&self, point: Vec2) -> i32 {
+        match self {
+            Some(shape) => shape.winding_number_2(point),
+            None => 0,
+        }
+    }
+}
+
+impl<T: Integrable> Integrable for Option<T> {
+    fn moment(&self) -> Moment {
+        match self {
+            Some(shape) => shape.moment(),
+            None => Moment::default(),
+        }
+    }
+}
+
+impl<L: Closed, R: Closed> Closed for Either<L, R> {
+    fn winding_number_2(&self, point: Vec2) -> i32 {
+        match self {
+            Either::Left(left) => left.winding_number_2(point),
+            Either::Right(right) => right.winding_number_2(point),
+        }
+    }
+}
+
+impl<L: Integrable, R: Integrable> Integrable for Either<L, R> {
+    fn moment(&self) -> Moment {
+        match self {
+            Either::Left(left) => left.moment(),
+            Either::Right(right) => right.moment(),
+        }
     }
 }
