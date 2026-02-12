@@ -8,8 +8,8 @@ mod polygon;
 mod util;
 
 pub use self::{
-    arc::{Arc, ArcVertex, CircleSegment},
-    circle::Circle,
+    arc::{Arc, ArcVertex, DiskSegment},
+    circle::{Circle, Disk},
     line::{Line, LineSegment},
     plane::HalfPlane,
     polygon::{Edge, Polygon, Vertex},

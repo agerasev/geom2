@@ -1,4 +1,4 @@
-use crate::{ArcVertex, AsIterator, Bounded, CircleSegment, Integrate, Moment, Polygon};
+use crate::{ArcVertex, AsIterator, Bounded, DiskSegment, Integrate, Moment, Polygon};
 use glam::Vec2;
 
 impl<V: AsIterator<Item = ArcVertex> + ?Sized> Polygon<V, ArcVertex> {
@@ -12,7 +12,7 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> Bounded for Polygon<V, ArcVertex>
         let mut winding_number = self.as_polygon().winding_number_2(point);
 
         for arc in self.edges() {
-            winding_number += CircleSegment(arc).winding_number_2(point);
+            winding_number += DiskSegment(arc).winding_number_2(point);
         }
 
         winding_number
@@ -24,7 +24,7 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> Integrate for Polygon<V, ArcVerte
         let mut moment = self.as_polygon().moment();
 
         for arc in self.edges() {
-            moment = moment.merge(CircleSegment(arc).moment());
+            moment = moment.merge(DiskSegment(arc).moment());
         }
 
         moment

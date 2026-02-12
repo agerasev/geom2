@@ -1,8 +1,7 @@
 use crate::{
-    Arc, ArcVertex, Bounded, CircleSegment, HalfPlane, Integrate, Intersect, IntersectTo, Moment,
-    Polygon,
+    Arc, ArcVertex, Bounded, DiskSegment, HalfPlane, Integrate, Intersect, Moment, Polygon,
 };
-use core::f32::consts::PI;
+use core::{f32::consts::PI, ops::Deref};
 use either::Either;
 use glam::Vec2;
 
@@ -12,7 +11,23 @@ pub struct Circle {
     pub radius: f32,
 }
 
-impl Bounded for Circle {
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Disk(pub Circle);
+
+impl Disk {
+    pub fn new(center: Vec2, radius: f32) -> Self {
+        Disk(Circle { center, radius })
+    }
+}
+
+impl Deref for Disk {
+    type Target = Circle;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Bounded for Disk {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         if (self.center - point).length_squared() <= self.radius.powi(2) {
             2 * self.radius.signum() as i32
@@ -22,7 +37,7 @@ impl Bounded for Circle {
     }
 }
 
-impl Integrate for Circle {
+impl Integrate for Disk {
     fn moment(&self) -> Moment {
         Moment {
             centroid: self.center,
@@ -31,15 +46,15 @@ impl Integrate for Circle {
     }
 }
 
-impl Intersect<Circle> for HalfPlane {
-    type Output = Either<CircleSegment, Circle>;
-    fn intersect(&self, circle: &Circle) -> Option<Self::Output> {
-        circle.intersect_to(self)
+impl Intersect<Disk> for HalfPlane {
+    type Output = Either<DiskSegment, Disk>;
+    fn intersect(&self, disk: &Disk) -> Option<Self::Output> {
+        disk.intersect(self)
     }
 }
 
-impl Intersect<HalfPlane> for Circle {
-    type Output = Either<CircleSegment, Circle>;
+impl Intersect<HalfPlane> for Disk {
+    type Output = Either<DiskSegment, Disk>;
     fn intersect(&self, other: &HalfPlane) -> Option<Self::Output> {
         let normal = other.normal;
         let apothem = -other.distance(self.center);
@@ -53,16 +68,16 @@ impl Intersect<HalfPlane> for Circle {
         let h = (self.radius.powi(2) - apothem.powi(2)).sqrt();
         // Midpoint of the chord
         let m = self.center + apothem * normal;
-        Some(Either::Left(CircleSegment(Arc {
+        Some(Either::Left(DiskSegment(Arc {
             points: (m + normal.perp() * h, m - normal.perp() * h),
             sagitta: self.radius - apothem,
         })))
     }
 }
 
-impl Intersect<Circle> for Circle {
-    type Output = Either<Polygon<[ArcVertex; 2], ArcVertex>, Circle>;
-    fn intersect(&self, other: &Circle) -> Option<Self::Output> {
+impl Intersect<Disk> for Disk {
+    type Output = Either<Polygon<[ArcVertex; 2], ArcVertex>, Disk>;
+    fn intersect(&self, other: &Disk) -> Option<Self::Output> {
         // Vector pointing from `self.center` to `other.center`
         let rel_pos = other.center - self.center;
         // Distance between the centers of the circles
@@ -111,21 +126,18 @@ mod tests {
 
     #[test]
     fn contains() {
-        let circle = Circle {
-            center: Vec2::new(0.0, 0.0),
-            radius: 1.0,
-        };
+        let disk = Disk::new(Vec2::new(0.0, 0.0), 1.0);
 
-        assert!(circle.contains(circle.center));
+        assert!(disk.contains(disk.center));
 
         // Inside points
-        assert!(circle.contains(Vec2::new(0.5, 0.0)));
-        assert!(circle.contains(Vec2::new(0.0, 0.5)));
-        assert!(circle.contains(Vec2::new(0.3, 0.4)));
+        assert!(disk.contains(Vec2::new(0.5, 0.0)));
+        assert!(disk.contains(Vec2::new(0.0, 0.5)));
+        assert!(disk.contains(Vec2::new(0.3, 0.4)));
 
         // Outside points
-        assert!(!circle.contains(Vec2::new(1.5, 0.0)));
-        assert!(!circle.contains(Vec2::new(0.0, 1.5)));
-        assert!(!circle.contains(Vec2::new(0.9, 0.9)));
+        assert!(!disk.contains(Vec2::new(1.5, 0.0)));
+        assert!(!disk.contains(Vec2::new(0.0, 1.5)));
+        assert!(!disk.contains(Vec2::new(0.9, 0.9)));
     }
 }

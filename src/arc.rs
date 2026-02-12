@@ -1,6 +1,6 @@
 use core::f32::consts::PI;
 
-use crate::{Bounded, Circle, EPS, Edge, Integrate, LineSegment, Moment, Vertex};
+use crate::{Bounded, Disk, EPS, Edge, Integrate, LineSegment, Moment, Vertex};
 use glam::Vec2;
 
 /// Circular arc.
@@ -55,11 +55,11 @@ impl Vertex for ArcVertex {
     type Edge = Arc;
 }
 
-/// Circle segment bounded by an arc and its chord.
+/// Disk segment bounded by an arc and its chord.
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub struct CircleSegment(pub Arc);
+pub struct DiskSegment(pub Arc);
 
-impl Bounded for CircleSegment {
+impl Bounded for DiskSegment {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         let (a, b) = self.0.points;
         let c = 0.5 * (a + b);
@@ -73,7 +73,7 @@ impl Bounded for CircleSegment {
         let normal = -(b - a).perp() / (2.0 * h) * self.0.sagitta.signum();
         let center = c + normal * (s - radius);
 
-        if (Circle { center, radius }).contains(point) && (point - c).dot(normal) > 0.0 {
+        if Disk::new(center, radius).contains(point) && (point - c).dot(normal) > 0.0 {
             2 * self.0.sagitta.signum() as i32
         } else {
             0
@@ -86,7 +86,7 @@ const APPROX_CIRCLE: f32 = 1e-4;
 
 extern crate std;
 
-impl Integrate for CircleSegment {
+impl Integrate for DiskSegment {
     fn moment(&self) -> Moment {
         let (a, b) = self.0.points;
         let c = 0.5 * (a + b);
@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn empty_segment() {
-        let Moment { area, centroid } = CircleSegment(Arc {
+        let Moment { area, centroid } = DiskSegment(Arc {
             points: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
             sagitta: 0.0,
         })
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn full_segment() {
-        let Moment { area, centroid } = CircleSegment(Arc {
+        let Moment { area, centroid } = DiskSegment(Arc {
             points: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
             sagitta: 2.0 * R,
         })
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn half_segment() {
         assert_eq!(
-            CircleSegment(Arc {
+            DiskSegment(Arc {
                 points: (Vec2::new(R, 0.0), Vec2::new(-R, 0.0)),
                 sagitta: R,
             })
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn segment_contains() {
-        let segment = CircleSegment(Arc {
+        let segment = DiskSegment(Arc {
             points: (Vec2::new(4.0, 1.0), Vec2::new(1.0, 1.0)),
             sagitta: 4.0,
         });
@@ -201,7 +201,7 @@ mod tests {
             if x >= last_check + check_step {
                 last_check = x;
                 let y = (1.0 - (1.0 - x).powi(2)).sqrt();
-                let ref_segment = CircleSegment(Arc {
+                let ref_segment = DiskSegment(Arc {
                     points: (
                         Vec2::new(x as f32, y as f32),
                         Vec2::new(x as f32, -y as f32),
