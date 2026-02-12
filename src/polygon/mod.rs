@@ -2,7 +2,10 @@ pub mod circle;
 pub mod line;
 
 use crate::AsIterator;
-use core::marker::PhantomData;
+use core::{
+    fmt::{self, Debug, Formatter},
+    marker::PhantomData,
+};
 use glam::Vec2;
 
 pub trait Edge: Copy {
@@ -13,7 +16,7 @@ pub trait Vertex: Copy {
     type Edge: Edge<Vertex = Self>;
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Polygon<V: AsIterator<Item = T> + ?Sized, T: Vertex = Vec2> {
     _ghost: PhantomData<T>,
     pub vertices: V,
@@ -76,5 +79,11 @@ where
 {
     pub fn len(&self) -> usize {
         self.vertices().len()
+    }
+}
+
+impl<T: Vertex, V: AsIterator<Item = T> + Debug + ?Sized> Debug for Polygon<V, T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Polygon {{ vertices: {:?} }}", &self.vertices)
     }
 }

@@ -240,7 +240,7 @@ mod tests {
         ]);
 
         // Clip with a vertical plane at x = 1
-        let plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(-1.0, 0.0));
+        let plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(1.0, 0.0));
         let clipped: Polygon<Vec<Vec2>> = square.intersect(&plane).unwrap();
 
         // Should get a rectangle from x=0 to x=1

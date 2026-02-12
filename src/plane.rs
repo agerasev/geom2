@@ -3,11 +3,11 @@ use glam::Vec2;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct HalfPlane {
-    /// Normal of the half-plane edge, pointing from free space to occuped space.
+    /// Normal of the half-plane edge, pointing from inside to outside.
     pub normal: Vec2,
     /// Minimal distance from the origin to the half-plane edge.
     ///
-    /// If the origin is outside of half-plane then it is positive, when origin is inside  it is negative.
+    /// If the origin is inside the half-plane then it is positive, when origin is outside — it is negative.
     pub offset: f32,
 }
 
@@ -22,13 +22,13 @@ impl HalfPlane {
 
     /// Construct from two points lying on edge.
     ///
-    /// When looking from the first point to the second one, then the left side is occupied (inside) and the right side is free (outside).
+    /// When looking from the first point to the second one, then the left side is inside the half-plane while the right side is outside.
     pub fn from_edge(a: Vec2, b: Vec2) -> Self {
-        Self::from_normal(a, (b - a).perp().normalize())
+        Self::from_normal(a, -(b - a).perp().normalize())
     }
 
     /// Minimal distance to the edge from the `point`.
-    /// It is positive if `point` is inside of the half-plane, and negative if outside.
+    /// It is positive if `point` is outside of the half-plane, and negative if inside.
     pub fn distance(&self, point: Vec2) -> f32 {
         point.dot(self.normal) - self.offset
     }
@@ -40,13 +40,13 @@ impl HalfPlane {
 
     pub fn edge(&self) -> Line {
         let p = self.boundary_point();
-        Line(p, p - self.normal.perp())
+        Line(p, p + self.normal.perp())
     }
 }
 
 impl Bounded for HalfPlane {
     fn winding_number_2(&self, point: Vec2) -> i32 {
-        self.distance(point).signum() as i32
+        -self.distance(point).signum() as i32
     }
 }
 
@@ -78,13 +78,13 @@ mod tests {
 
         assert_eq!(plane.distance(point), 0.0);
 
-        let inside_point = Vec2::new(3.0, 3.0);
-        assert!(plane.contains(inside_point));
-        assert!(plane.distance(inside_point) > 0.0);
-
-        let outside_point = Vec2::new(1.0, 3.0);
+        let outside_point = Vec2::new(3.0, 3.0);
         assert!(!plane.contains(outside_point));
-        assert!(plane.distance(outside_point) < 0.0);
+        assert!(plane.distance(outside_point) > 0.0);
+
+        let inside_point = Vec2::new(1.0, 3.0);
+        assert!(plane.contains(inside_point));
+        assert!(plane.distance(inside_point) < 0.0);
     }
 
     #[test]
@@ -140,15 +140,15 @@ mod tests {
             // Point on boundary should have zero distance
             assert_abs_diff_eq!(plane.distance(point_on_boundary), 0.0, epsilon = TEST_EPS);
 
-            // Move along normal direction (inside)
-            let inside_point = point_on_boundary + plane.normal * 2.0;
-            assert!(plane.contains(inside_point));
-            assert_abs_diff_eq!(plane.distance(inside_point), 2.0, epsilon = TEST_EPS);
-
-            // Move opposite to normal direction (outside)
-            let outside_point = point_on_boundary - plane.normal * 2.0;
+            // Move along normal direction (outside)
+            let outside_point = point_on_boundary + plane.normal * 2.0;
             assert!(!plane.contains(outside_point));
-            assert_abs_diff_eq!(plane.distance(outside_point), -2.0, epsilon = TEST_EPS);
+            assert_abs_diff_eq!(plane.distance(outside_point), 2.0, epsilon = TEST_EPS);
+
+            // Move opposite to normal direction (inside)
+            let inside_point = point_on_boundary - plane.normal * 2.0;
+            assert!(plane.contains(inside_point));
+            assert_abs_diff_eq!(plane.distance(inside_point), -2.0, epsilon = TEST_EPS);
         }
     }
 
