@@ -1,5 +1,8 @@
-use crate::{Bounded, EPS, Edge, HalfPlane, Integrate, Intersect, LineSegment, Moment, Vertex};
+use crate::{
+    Bounded, EPS, Edge, HalfPlane, Integrate, Intersect, LineSegment, Moment, Polygon, Vertex,
+};
 use core::f32::consts::PI;
+use either::Either;
 use glam::Vec2;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -27,16 +30,10 @@ impl Integrate for Circle {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum CircleOrSegment {
-    Circle(Circle),
-    Segment(Arc),
-}
-
-/// Circle arc.
+/// Circular arc.
 ///
 /// Defined by:
-/// + `bounds` — vertices on its ends,
+/// + `points` — vertices on its ends,
 /// + `sagitta` — distance from midpoint of the chord to the midpoint of the arc.
 ///
 /// ```text
@@ -48,18 +45,24 @@ pub enum CircleOrSegment {
 /// b1    chord     b0
 /// ```
 ///
-/// Where `(b0, b1)` — end points (bounds), `s` - sagitta.
+/// Where `(b0, b1)` — end points, `s` - sagitta.
 ///
 /// Sagitta is signed. When looking from the first end to the second one,
 /// the positive sagitta will make the arc to the right side of the chord,
 /// while the negative sagitta — to the left side.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Arc {
-    pub bounds: (Vec2, Vec2),
+    pub points: (Vec2, Vec2),
     pub sagitta: f32,
 }
 
-/// One end point of an [`Arc`] with its sagitta.
+impl Arc {
+    pub fn chord(&self) -> LineSegment {
+        LineSegment(self.points.0, self.points.1)
+    }
+}
+
+/// Start point of an [`Arc`] with its sagitta.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct ArcVertex {
     pub point: Vec2,
@@ -70,7 +73,7 @@ impl Edge for Arc {
     type Vertex = ArcVertex;
     fn from_vertices(a: &Self::Vertex, b: &Self::Vertex) -> Self {
         Self {
-            bounds: (a.point, b.point),
+            points: (a.point, b.point),
             sagitta: a.sagitta,
         }
     }
@@ -83,15 +86,9 @@ impl Vertex for ArcVertex {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct CircleSegment(pub Arc);
 
-impl CircleSegment {
-    pub fn chord(&self) -> LineSegment {
-        LineSegment(self.0.bounds.0, self.0.bounds.1)
-    }
-}
-
 impl Bounded for CircleSegment {
     fn winding_number_2(&self, point: Vec2) -> i32 {
-        let (a, b) = self.0.bounds;
+        let (a, b) = self.0.points;
         let c = 0.5 * (a + b);
         let s = self.0.sagitta.abs();
         if s < EPS {
@@ -118,7 +115,7 @@ extern crate std;
 
 impl Integrate for CircleSegment {
     fn moment(&self) -> Moment {
-        let (a, b) = self.0.bounds;
+        let (a, b) = self.0.points;
         let c = 0.5 * (a + b);
         let s = self.0.sagitta.abs();
         if s < EPS {
@@ -156,111 +153,73 @@ impl Integrate for CircleSegment {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-struct CircleSegmentMoments {
-    /// Area of the segment
-    area: f32,
-    /// Offset from the circle center
-    offset: f32,
+impl Intersect<Circle, Either<CircleSegment, Circle>> for HalfPlane {
+    fn intersect(&self, circle: &Circle) -> Option<Either<CircleSegment, Circle>> {
+        circle.intersect(self)
+    }
 }
 
-impl CircleSegmentMoments {
-    /// For given unit circle chord returns segment area and centroid offset.
-    ///
-    /// Chord is defined via distance from circle center.
-    fn new_unit(dist: f32) -> CircleSegmentMoments {
-        let cosine = dist.clamp(-1.0, 1.0);
-        let sine = (1.0 - cosine.powi(2)).sqrt();
-        let (area, offset) = if cosine.abs() < 1.0 - EPS {
-            let area = cosine.acos() - cosine * sine;
-            (area, (2.0 / 3.0) * sine.powi(3) / area)
-        } else {
-            // Approximate circle by parabola
-            let y = 1.0 - cosine.abs();
-            let a = (4.0 / 3.0) * (2.0 * y).sqrt() * y;
-            let b = 1.0 - (3.0 / 10.0) * y;
-            if cosine > 0.0 {
-                (a, b)
-            } else {
-                (PI - a, -b * a / (PI - a))
-            }
-        };
-        CircleSegmentMoments { area, offset }
-    }
-
-    fn new(radius: f32, dist: f32) -> CircleSegmentMoments {
-        let CircleSegmentMoments { area, offset } = Self::new_unit(dist / radius);
-        CircleSegmentMoments {
-            area: area * radius.powi(2),
-            offset: offset * radius,
+impl Intersect<HalfPlane, Either<CircleSegment, Circle>> for Circle {
+    fn intersect(&self, other: &HalfPlane) -> Option<Either<CircleSegment, Circle>> {
+        let normal = other.normal;
+        let apothem = -other.distance(self.center);
+        if apothem > self.radius {
+            return None;
         }
-    }
-}
-
-impl Intersect<Circle, Moment> for HalfPlane {
-    fn intersect(&self, circle: &Circle) -> Option<Moment> {
-        let plane = self;
-        let dist = circle.center.dot(plane.normal) - plane.offset;
-        if dist < circle.radius {
-            if dist > -circle.radius {
-                let segment = CircleSegmentMoments::new(circle.radius, dist);
-                Some(Moment {
-                    area: segment.area,
-                    centroid: circle.center - plane.normal * segment.offset,
-                })
-            } else {
-                Some(Moment {
-                    area: PI * circle.radius.powi(2),
-                    centroid: circle.center,
-                })
-            }
-        } else {
-            None
+        if apothem < -self.radius {
+            return Some(Either::Right(*self));
         }
+        // Half length of the chord
+        let h = (self.radius.powi(2) - apothem.powi(2)).sqrt();
+        // Midpoint of the chord
+        let m = self.center + apothem * normal;
+        Some(Either::Left(CircleSegment(Arc {
+            points: (m + normal.perp() * h, m - normal.perp() * h),
+            sagitta: self.radius - apothem,
+        })))
     }
 }
 
-impl Intersect<HalfPlane, Moment> for Circle {
-    fn intersect(&self, other: &HalfPlane) -> Option<Moment> {
-        other.intersect(self)
-    }
-}
-
-impl Intersect<Circle, Moment> for Circle {
-    fn intersect(&self, other: &Circle) -> Option<Moment> {
+impl Intersect<Circle, Either<Polygon<[ArcVertex; 2], ArcVertex>, Circle>> for Circle {
+    fn intersect(
+        &self,
+        other: &Circle,
+    ) -> Option<Either<Polygon<[ArcVertex; 2], ArcVertex>, Circle>> {
         // Vector pointing from `self.center` to `other.center`
-        let vec = other.center - self.center;
+        let rel_pos = other.center - self.center;
         // Distance between the centers of the circles
-        let dist = vec.length();
-        if dist < self.radius + other.radius {
-            if dist > (self.radius - other.radius).abs() {
-                let dir = vec / dist;
+        let distance = rel_pos.length();
+        if distance < self.radius + other.radius {
+            if distance > (self.radius - other.radius).abs() {
+                let dir = rel_pos / distance;
 
-                // Common chord offsets
-                let self_offset =
-                    0.5 * (dist + (self.radius.powi(2) - other.radius.powi(2)) / dist);
-                let other_offset = dist - self_offset;
+                // Common chord apothems
+                let self_apothem =
+                    0.5 * (distance + (self.radius.powi(2) - other.radius.powi(2)) / distance);
+                let other_apothem = distance - self_apothem;
 
-                let self_segment = CircleSegmentMoments::new(self.radius, self_offset);
-                let other_segment = CircleSegmentMoments::new(other.radius, other_offset);
+                // Half length of the common chord
+                let h = (self.radius.powi(2) - self_apothem.powi(2)).sqrt();
+                // Midpoint of the common chord
+                let m = self.center + dir * self_apothem;
 
-                let area = self_segment.area + other_segment.area;
-                Some(Moment {
-                    area,
-                    centroid: ((self.center + dir * self_segment.offset) * self_segment.area
-                        + (other.center - dir * other_segment.offset) * other_segment.area)
-                        / area,
-                })
+                Some(Either::Left(Polygon::new([
+                    ArcVertex {
+                        point: m - dir.perp() * h,
+                        sagitta: self.radius - self_apothem,
+                    },
+                    ArcVertex {
+                        point: m + dir.perp() * h,
+                        sagitta: other.radius - other_apothem,
+                    },
+                ])))
             } else {
-                let (minr, minc) = if self.radius < other.radius {
-                    (self.radius, self.center)
+                // One circle is inside another
+                if self.radius < other.radius {
+                    Some(Either::Right(*self))
                 } else {
-                    (other.radius, other.center)
-                };
-                Some(Moment {
-                    area: PI * minr.powi(2),
-                    centroid: minc,
-                })
+                    Some(Either::Right(*other))
+                }
             }
         } else {
             None
@@ -298,7 +257,7 @@ mod tests {
     #[test]
     fn empty_segment() {
         let Moment { area, centroid } = CircleSegment(Arc {
-            bounds: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
+            points: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
             sagitta: 0.0,
         })
         .moment();
@@ -310,7 +269,7 @@ mod tests {
     #[test]
     fn full_segment() {
         let Moment { area, centroid } = CircleSegment(Arc {
-            bounds: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
+            points: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
             sagitta: 2.0 * R,
         })
         .moment();
@@ -323,7 +282,7 @@ mod tests {
     fn half_segment() {
         assert_eq!(
             CircleSegment(Arc {
-                bounds: (Vec2::new(R, 0.0), Vec2::new(-R, 0.0)),
+                points: (Vec2::new(R, 0.0), Vec2::new(-R, 0.0)),
                 sagitta: R,
             })
             .area(),
@@ -334,7 +293,7 @@ mod tests {
     #[test]
     fn segment_contains() {
         let segment = CircleSegment(Arc {
-            bounds: (Vec2::new(4.0, 1.0), Vec2::new(1.0, 1.0)),
+            points: (Vec2::new(4.0, 1.0), Vec2::new(1.0, 1.0)),
             sagitta: 4.0,
         });
 
@@ -364,7 +323,7 @@ mod tests {
                 last_check = x;
                 let y = (1.0 - (1.0 - x).powi(2)).sqrt();
                 let ref_segment = CircleSegment(Arc {
-                    bounds: (
+                    points: (
                         Vec2::new(x as f32, y as f32),
                         Vec2::new(x as f32, -y as f32),
                     ),
