@@ -1,5 +1,5 @@
 use crate::{
-    AsIterator, Bounded, EPS, HalfPlane, Integrate, Intersect, LineSegment, Moment, Polygon,
+    AsIterator, Bounded, EPS, HalfPlane, Integrate, IntersectTo, LineSegment, Moment, Polygon,
 };
 use glam::Vec2;
 
@@ -65,9 +65,9 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Integrate for Polygon<V> {
 }
 
 impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromIterator<Vec2>>
-    Intersect<HalfPlane, Polygon<W>> for Polygon<V>
+    IntersectTo<HalfPlane, Polygon<W>> for Polygon<V>
 {
-    fn intersect(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
+    fn intersect_to(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
         let mut prev = match self.vertices().last() {
             Some(p) => *p,
             None => return None,
@@ -82,10 +82,10 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
                     (true, true) => [None, Some(v)],
                     (true, false) => [
                         None,
-                        Some(plane.edge().intersect(&LineSegment(prev, v)).unwrap()),
+                        Some(plane.edge().intersect_to(&LineSegment(prev, v)).unwrap()),
                     ],
                     (false, true) => [
-                        Some(plane.edge().intersect(&LineSegment(prev, v)).unwrap()),
+                        Some(plane.edge().intersect_to(&LineSegment(prev, v)).unwrap()),
                         Some(v),
                     ],
                     (false, false) => [None, None],
@@ -105,10 +105,10 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
 }
 
 impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromIterator<Vec2>>
-    Intersect<Polygon<V>, Polygon<W>> for HalfPlane
+    IntersectTo<Polygon<V>, Polygon<W>> for HalfPlane
 {
-    fn intersect(&self, other: &Polygon<V>) -> Option<Polygon<W>> {
-        other.intersect(self)
+    fn intersect_to(&self, other: &Polygon<V>) -> Option<Polygon<W>> {
+        other.intersect_to(self)
     }
 }
 
@@ -116,15 +116,15 @@ impl<
     U: AsIterator<Item = Vec2> + ?Sized,
     V: AsIterator<Item = Vec2> + ?Sized,
     W: AsIterator<Item = Vec2> + FromIterator<Vec2>,
-> Intersect<Polygon<U>, Polygon<W>> for Polygon<V>
+> IntersectTo<Polygon<U>, Polygon<W>> for Polygon<V>
 {
-    fn intersect(&self, other: &Polygon<U>) -> Option<Polygon<W>> {
+    fn intersect_to(&self, other: &Polygon<U>) -> Option<Polygon<W>> {
         let mut result = Polygon::from_iter(self.vertices().copied());
 
         // Sutherland-Hodgman polygon clipping algorithm
         for LineSegment(a, b) in other.edges() {
             let plane = HalfPlane::from_edge(a, b);
-            result = result.intersect(&plane)?;
+            result = result.intersect_to(&plane)?;
         }
 
         Some(result)
@@ -241,7 +241,7 @@ mod tests {
 
         // Clip with a vertical plane at x = 1
         let plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(1.0, 0.0));
-        let clipped: Polygon<Vec<Vec2>> = square.intersect(&plane).unwrap();
+        let clipped: Polygon<Vec<Vec2>> = square.intersect_to(&plane).unwrap();
 
         // Should get a rectangle from x=0 to x=1
         assert_eq!(
@@ -271,7 +271,7 @@ mod tests {
             Vec2::new(1.0, 3.0),
         ]);
 
-        let intersection: Polygon<Vec<Vec2>> = square1.intersect(&square2).unwrap();
+        let intersection: Polygon<Vec<Vec2>> = square1.intersect_to(&square2).unwrap();
         assert_eq!(
             intersection,
             Polygon::new([

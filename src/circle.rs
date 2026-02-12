@@ -1,5 +1,6 @@
 use crate::{
-    Bounded, EPS, Edge, HalfPlane, Integrate, Intersect, LineSegment, Moment, Polygon, Vertex,
+    Bounded, EPS, Edge, HalfPlane, Integrate, Intersect, IntersectTo, LineSegment, Moment, Polygon,
+    Vertex,
 };
 use core::f32::consts::PI;
 use either::Either;
@@ -153,14 +154,16 @@ impl Integrate for CircleSegment {
     }
 }
 
-impl Intersect<Circle, Either<CircleSegment, Circle>> for HalfPlane {
-    fn intersect(&self, circle: &Circle) -> Option<Either<CircleSegment, Circle>> {
-        circle.intersect(self)
+impl Intersect<Circle> for HalfPlane {
+    type Output = Either<CircleSegment, Circle>;
+    fn intersect(&self, circle: &Circle) -> Option<Self::Output> {
+        circle.intersect_to(self)
     }
 }
 
-impl Intersect<HalfPlane, Either<CircleSegment, Circle>> for Circle {
-    fn intersect(&self, other: &HalfPlane) -> Option<Either<CircleSegment, Circle>> {
+impl Intersect<HalfPlane> for Circle {
+    type Output = Either<CircleSegment, Circle>;
+    fn intersect(&self, other: &HalfPlane) -> Option<Self::Output> {
         let normal = other.normal;
         let apothem = -other.distance(self.center);
         if apothem > self.radius {
@@ -180,11 +183,9 @@ impl Intersect<HalfPlane, Either<CircleSegment, Circle>> for Circle {
     }
 }
 
-impl Intersect<Circle, Either<Polygon<[ArcVertex; 2], ArcVertex>, Circle>> for Circle {
-    fn intersect(
-        &self,
-        other: &Circle,
-    ) -> Option<Either<Polygon<[ArcVertex; 2], ArcVertex>, Circle>> {
+impl Intersect<Circle> for Circle {
+    type Output = Either<Polygon<[ArcVertex; 2], ArcVertex>, Circle>;
+    fn intersect(&self, other: &Circle) -> Option<Self::Output> {
         // Vector pointing from `self.center` to `other.center`
         let rel_pos = other.center - self.center;
         // Distance between the centers of the circles

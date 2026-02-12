@@ -71,7 +71,8 @@ impl Vertex for Vec2 {
     type Edge = LineSegment;
 }
 
-impl Intersect<Line, Vec2> for Line {
+impl Intersect<Line> for Line {
+    type Output = Vec2;
     fn intersect(&self, other: &Line) -> Option<Vec2> {
         let p = self.0;
         let q = other.0;
@@ -118,7 +119,8 @@ impl Intersect<Line, Vec2> for Line {
     }
 }
 
-impl Intersect<Line, Vec2> for LineSegment {
+impl Intersect<Line> for LineSegment {
+    type Output = Vec2;
     fn intersect(&self, other: &Line) -> Option<Vec2> {
         let p = self.0;
         let q = other.0;
@@ -174,13 +176,15 @@ impl Intersect<Line, Vec2> for LineSegment {
     }
 }
 
-impl Intersect<LineSegment, Vec2> for Line {
+impl Intersect<LineSegment> for Line {
+    type Output = Vec2;
     fn intersect(&self, other: &LineSegment) -> Option<Vec2> {
         other.intersect(self)
     }
 }
 
-impl Intersect<LineSegment, Vec2> for LineSegment {
+impl Intersect<LineSegment> for LineSegment {
+    type Output = Vec2;
     fn intersect(&self, other: &LineSegment) -> Option<Vec2> {
         let p = self.0;
         let q = other.0;

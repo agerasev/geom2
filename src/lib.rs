@@ -49,9 +49,21 @@ pub trait Integrate {
     }
 }
 
-pub trait Intersect<T: Intersect<Self, U> + ?Sized, U> {
-    /// Abstract intersection of two figures.
-    fn intersect(&self, other: &T) -> Option<U>;
+/// Intersection of two figures
+pub trait Intersect<T: Intersect<Self, Output = Self::Output> + ?Sized> {
+    type Output: Sized;
+    fn intersect(&self, other: &T) -> Option<Self::Output>;
+}
+
+/// Insrsection of two figures where resulting figure type can be selected.
+pub trait IntersectTo<T: IntersectTo<Self, U> + ?Sized, U> {
+    fn intersect_to(&self, other: &T) -> Option<U>;
+}
+
+impl<U: Intersect<V, Output = W>, V: Intersect<U, Output = W>, W> IntersectTo<V, W> for U {
+    fn intersect_to(&self, other: &V) -> Option<W> {
+        self.intersect(other)
+    }
 }
 
 /// Moment of the shape
