@@ -1,4 +1,4 @@
-use crate::{Closed, Line};
+use crate::{Closed, Line, impl_approx_eq};
 use glam::Vec2;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -51,3 +51,5 @@ impl Closed for HalfPlane {
         -self.distance(point).signum() as i32
     }
 }
+
+impl_approx_eq!(HalfPlane, f32, normal, offset);

@@ -28,8 +28,7 @@ fn moment_segments() {
         },
     ]);
 
-    assert_abs_diff_eq!(arc_poly.area(), disk.area(), epsilon = TEST_EPS);
-    assert_abs_diff_eq!(arc_poly.centroid(), disk.centroid(), epsilon = TEST_EPS);
+    assert_abs_diff_eq!(arc_poly.moment(), disk.moment(), epsilon = TEST_EPS);
 }
 
 #[test]
@@ -56,8 +55,7 @@ fn moment_arc_triangle() {
         },
     ]);
 
-    assert_abs_diff_eq!(arc_poly.area(), disk.area(), epsilon = TEST_EPS);
-    assert_abs_diff_eq!(arc_poly.centroid(), disk.centroid(), epsilon = TEST_EPS);
+    assert_abs_diff_eq!(arc_poly.moment(), disk.moment(), epsilon = TEST_EPS);
 }
 
 #[test]
@@ -77,6 +75,5 @@ fn intersect_polygon_circle_inside() {
 
     let intersection: ArcPolygon<Vec<ArcVertex>> = poly.intersect_to(&disk).unwrap();
 
-    assert_abs_diff_eq!(intersection.area(), disk.area(), epsilon = TEST_EPS);
-    assert_abs_diff_eq!(intersection.centroid(), disk.centroid(), epsilon = TEST_EPS);
+    assert_abs_diff_eq!(intersection.moment(), disk.moment(), epsilon = TEST_EPS);
 }

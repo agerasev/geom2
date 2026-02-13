@@ -1,6 +1,6 @@
 use crate::{
     Arc, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line, LineSegment,
-    Moment, Polygon,
+    Moment, Polygon, impl_approx_eq,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -55,6 +55,9 @@ impl Integrable for Disk {
         }
     }
 }
+
+impl_approx_eq!(Circle, f32, center, radius);
+impl_approx_eq!(Disk, f32, 0);
 
 /// Order of output points must be the same as in the line
 impl Intersect<Line> for Circle {

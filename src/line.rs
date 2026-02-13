@@ -1,4 +1,4 @@
-use crate::{EPS, Edge, Intersect, Vertex};
+use crate::{EPS, Edge, Intersect, Vertex, impl_approx_eq};
 use glam::Vec2;
 
 /// Infinite line defined by two points lying on it.
@@ -88,6 +88,9 @@ impl Edge for LineSegment {
 impl Vertex for Vec2 {
     type Edge = LineSegment;
 }
+
+impl_approx_eq!(Line, f32, 0, 1);
+impl_approx_eq!(LineSegment, f32, 0, 1);
 
 impl Intersect<Line> for Line {
     type Output = Vec2;

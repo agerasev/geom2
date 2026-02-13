@@ -1,4 +1,4 @@
-use crate::{Closed, Disk, EPS, Edge, Integrable, LineSegment, Moment, Vertex};
+use crate::{Closed, Disk, EPS, Edge, Integrable, LineSegment, Moment, Vertex, impl_approx_eq};
 use core::{f32::consts::PI, ops::Deref};
 use glam::Vec2;
 
@@ -129,3 +129,7 @@ impl Integrable for DiskSegment {
         }
     }
 }
+
+impl_approx_eq!(Arc, f32, points.0, points.1, sagitta);
+impl_approx_eq!(ArcVertex, f32, point, sagitta);
+impl_approx_eq!(DiskSegment, f32, points.0, points.1, sagitta);

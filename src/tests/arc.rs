@@ -7,26 +7,29 @@ const R: f32 = 1.234;
 
 #[test]
 fn empty_segment() {
-    let Moment { area, centroid } = DiskSegment(Arc {
+    let segment = DiskSegment(Arc {
         points: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
         sagitta: 0.0,
-    })
-    .moment();
+    });
 
-    assert_abs_diff_eq!(area, 0.0, epsilon = EPS);
-    assert_abs_diff_eq!(centroid, Vec2::ZERO, epsilon = EPS);
+    assert_abs_diff_eq!(segment.area(), 0.0, epsilon = EPS);
 }
 
 #[test]
 fn full_segment() {
-    let Moment { area, centroid } = DiskSegment(Arc {
+    let segment = DiskSegment(Arc {
         points: (Vec2::new(EPS, 0.0), Vec2::new(-EPS, 0.0)),
         sagitta: 2.0 * R,
-    })
-    .moment();
+    });
 
-    assert_abs_diff_eq!(area, PI * R.powi(2), epsilon = EPS);
-    assert_abs_diff_eq!(centroid, Vec2::new(0.0, R), epsilon = EPS);
+    assert_abs_diff_eq!(
+        segment.moment(),
+        Moment {
+            area: PI * R.powi(2),
+            centroid: Vec2::new(0.0, R)
+        },
+        epsilon = EPS
+    );
 }
 
 #[test]
@@ -80,10 +83,12 @@ fn numerical_segment() {
                 ),
                 sagitta: x as f32,
             });
-            assert_abs_diff_eq!(ref_segment.area(), area as f32, epsilon = 1e-4);
             assert_abs_diff_eq!(
-                ref_segment.centroid(),
-                Vec2::new((moment / area) as f32, 0.0),
+                ref_segment.moment(),
+                Moment {
+                    area: area as f32,
+                    centroid: Vec2::new((moment / area) as f32, 0.0)
+                },
                 epsilon = 1e-4
             );
         }
