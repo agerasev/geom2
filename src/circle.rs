@@ -1,6 +1,6 @@
 use crate::{
-    Arc, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line, Moment,
-    Polygon,
+    Arc, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line, LineSegment,
+    Moment, Polygon,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -50,13 +50,7 @@ impl Integrable for Disk {
     }
 }
 
-impl Intersect<Circle> for Line {
-    type Output = [Vec2; 2];
-    fn intersect(&self, circle: &Circle) -> Option<Self::Output> {
-        circle.intersect(self)
-    }
-}
-
+/// Order of output points must be the same as in the line
 impl Intersect<Line> for Circle {
     type Output = [Vec2; 2];
     fn intersect(&self, line: &Line) -> Option<Self::Output> {
@@ -78,6 +72,31 @@ impl Intersect<Line> for Circle {
                 }
             }
         }
+    }
+}
+
+impl Intersect<Circle> for Line {
+    type Output = [Vec2; 2];
+    fn intersect(&self, circle: &Circle) -> Option<Self::Output> {
+        circle.intersect(self)
+    }
+}
+
+impl Intersect<LineSegment> for Circle {
+    type Output = [Option<Vec2>; 2];
+    fn intersect(&self, line: &LineSegment) -> Option<Self::Output> {
+        let [a, b] = self.intersect(&Line(line.0, line.1))?;
+        Some([
+            if line.is_between(a) { Some(a) } else { None },
+            if line.is_between(b) { Some(b) } else { None },
+        ])
+    }
+}
+
+impl Intersect<Circle> for LineSegment {
+    type Output = [Option<Vec2>; 2];
+    fn intersect(&self, circle: &Circle) -> Option<Self::Output> {
+        circle.intersect(self)
     }
 }
 

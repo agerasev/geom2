@@ -1,6 +1,6 @@
 use crate::{
     ArcVertex, AsIterator, Circle, Closed, Disk, DiskSegment, Integrable, Intersect, IntersectTo,
-    Line, Moment, Polygon,
+    Line, LineSegment, Moment, Polygon,
 };
 use glam::Vec2;
 
@@ -13,19 +13,16 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> ArcPolygon<V> {
 }
 impl<V: AsIterator<Item = ArcVertex> + FromIterator<ArcVertex>> ArcPolygon<V> {
     pub fn from_circle(Circle { center, radius }: Circle) -> Self {
-        Self::from_iter(
-            [
-                ArcVertex {
-                    point: center + Vec2::new(0.0, -radius),
-                    sagitta: radius,
-                },
-                ArcVertex {
-                    point: center + Vec2::new(0.0, radius),
-                    sagitta: radius,
-                },
-            ]
-            .into_iter(),
-        )
+        Self::from_iter([
+            ArcVertex {
+                point: center + Vec2::new(0.0, -radius),
+                sagitta: radius,
+            },
+            ArcVertex {
+                point: center + Vec2::new(0.0, radius),
+                sagitta: radius,
+            },
+        ])
     }
 }
 
@@ -57,9 +54,9 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
     IntersectTo<Disk, ArcPolygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, disk: &Disk) -> Option<ArcPolygon<W>> {
+        let mut iter = self.vertices();
         let mut last = Vec2::ZERO;
-        let (n, mut prev) = match self
-            .vertices()
+        let (n, mut prev) = match (&mut iter)
             .copied()
             .enumerate()
             .find(|(_, v)| disk.contains(*v))
@@ -74,7 +71,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
             }
         };
         let mut prev_inside = true;
-        let clip_iter = (self.vertices().skip(n + 1))
+        let clip_iter = iter
             .chain(self.vertices().take(n))
             .copied()
             .flat_map(|v| {
@@ -102,7 +99,8 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
                         [
                             Some(ArcVertex {
                                 point: last,
-                                sagitta: todo!(),
+                                sagitta: disk.radius
+                                    - Line(last, clip).signed_distance(disk.center),
                             }),
                             Some(ArcVertex {
                                 point: clip,
@@ -110,12 +108,13 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
                             }),
                         ]
                     }
-                    (false, false) => match disk.edge().intersect(&Line(prev, v)) {
-                        Some([a, b]) => {
+                    (false, false) => match disk.edge().intersect(&LineSegment(prev, v)) {
+                        Some([Some(a), Some(b)]) => {
                             let ret = [
                                 Some(ArcVertex {
                                     point: last,
-                                    sagitta: todo!(),
+                                    sagitta: disk.radius
+                                        - Line(last, a).signed_distance(disk.center),
                                 }),
                                 Some(ArcVertex {
                                     point: a,
@@ -125,7 +124,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
                             last = b;
                             ret
                         }
-                        None => [None, None],
+                        _ => [None, None],
                     },
                 };
                 prev_inside = inside;

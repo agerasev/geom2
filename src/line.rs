@@ -14,6 +14,17 @@ impl Line {
         (self.1 - self.0).abs().max_element() < EPS
     }
 
+    /// Minimal distance to the edge from the `point`. Distance is signed.
+    ///
+    /// When looking from first point the line defined by to the second one,
+    /// the distance is positive if `point` is at the right side,
+    /// and negative — if at the left side.
+    pub fn signed_distance(&self, point: Vec2) -> f32 {
+        let d = self.1 - self.0;
+        let r = point - self.0;
+        r.perp_dot(d)
+    }
+
     /// Check that point is within EPS-neighbourhood of the line.
     pub fn is_near(&self, point: Vec2) -> bool {
         let r = self.1 - self.0;
@@ -31,13 +42,20 @@ impl Line {
 
 impl LineSegment {
     /// Returns the line containing this segment
-    pub fn to_line(&self) -> Line {
+    pub fn line(&self) -> Line {
         Line(self.0, self.1)
     }
 
     /// Returns true if this segment has zero length
     pub fn is_degenerate(&self) -> bool {
         Line(self.0, self.1).is_degenerate()
+    }
+
+    // Check that point lies between endpoints, but not necessarily on the line
+    pub fn is_between(&self, point: Vec2) -> bool {
+        let r = self.1 - self.0;
+        let dot = (point - self.0).dot(r);
+        dot >= 0.0 && dot <= r.length_squared()
     }
 
     /// Checks is a point is within EPS-neighbourhood of the segment
