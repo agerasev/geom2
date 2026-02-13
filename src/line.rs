@@ -22,7 +22,7 @@ impl Line {
     pub fn signed_distance(&self, point: Vec2) -> f32 {
         let d = self.1 - self.0;
         let r = point - self.0;
-        r.perp_dot(d)
+        d.perp_dot(r) * d.length_recip()
     }
 
     /// Check that point is within EPS-neighbourhood of the line.

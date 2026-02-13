@@ -42,7 +42,7 @@ impl HalfPlane {
 
     pub fn edge(&self) -> Line {
         let p = self.boundary_point();
-        Line(p, p + self.normal.perp())
+        Line(p - 0.5 * self.normal.perp(), p + 0.5 * self.normal.perp())
     }
 }
 

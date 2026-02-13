@@ -77,3 +77,47 @@ fn intersect_polygon_circle_inside() {
 
     assert_abs_diff_eq!(intersection.moment(), disk.moment(), epsilon = TEST_EPS);
 }
+
+#[test]
+fn intersect_polygon_circle_sector() {
+    let disk = Circle {
+        center: Vec2::new(0.0, 0.0),
+        radius: 1.0,
+    }
+    .fill();
+
+    let poly = Polygon::new([
+        Vec2::new(0.0, 0.0),
+        Vec2::new(2.0, 0.0),
+        Vec2::new(2.0, 2.0),
+        Vec2::new(0.0, 2.0),
+    ]);
+
+    let intersection: ArcPolygon<Vec<ArcVertex>> = poly.intersect_to(&disk).unwrap();
+
+    assert_abs_diff_eq!(intersection.area(), disk.area() / 4.0, epsilon = TEST_EPS);
+}
+
+#[test]
+fn intersect_polygon_circle_stripe() {
+    let disk = Circle {
+        center: Vec2::new(0.0, 0.0),
+        radius: 1.0,
+    }
+    .fill();
+
+    let poly = Polygon::new([
+        Vec2::new(-2.0, -0.5),
+        Vec2::new(2.0, -0.5),
+        Vec2::new(2.0, 0.5),
+        Vec2::new(-2.0, 0.5),
+    ]);
+
+    let intersection: ArcPolygon<Vec<ArcVertex>> = poly.intersect_to(&disk).unwrap();
+    assert_eq!(intersection.len(), 4);
+    assert_abs_diff_eq!(
+        intersection.area(),
+        disk.area() / 3.0 + 3.0f32.sqrt() / 2.0,
+        epsilon = TEST_EPS
+    );
+}

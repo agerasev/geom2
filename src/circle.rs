@@ -68,7 +68,7 @@ impl Intersect<Line> for Circle {
         }
         let plane = HalfPlane::from_edge(*line);
         match self.intersect(&plane)? {
-            Either::Left(arc) => Some([arc.points.0, arc.points.1]),
+            Either::Left(arc) => Some([arc.points.1, arc.points.0]),
             Either::Right(circle) => {
                 if plane.distance(circle.center) > -circle.radius {
                     // Tangent line

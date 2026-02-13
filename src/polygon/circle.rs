@@ -1,6 +1,6 @@
 use crate::{
-    ArcVertex, AsIterator, Circle, Closed, Disk, DiskSegment, Integrable, Intersect, IntersectTo,
-    Line, LineSegment, Moment, Polygon,
+    ArcVertex, AsIterator, Circle, Closed, Disk, DiskSegment, EPS, Integrable, Intersect,
+    IntersectTo, Line, LineSegment, Moment, Polygon,
 };
 use glam::Vec2;
 
@@ -50,32 +50,25 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> Integrable for ArcPolygon<V> {
     }
 }
 
+extern crate std;
+use std::dbg;
+
 impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + FromIterator<ArcVertex>>
     IntersectTo<Disk, ArcPolygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, disk: &Disk) -> Option<ArcPolygon<W>> {
-        let mut iter = self.vertices();
-        let mut last = Vec2::ZERO;
-        let (n, mut prev) = match (&mut iter)
-            .copied()
-            .enumerate()
-            .find(|(_, v)| disk.contains(*v))
-        {
-            Some(x) => x,
-            None => {
-                return if self.contains(disk.center) {
-                    Some(ArcPolygon::<W>::from_circle(**disk))
-                } else {
-                    None
-                };
-            }
-        };
-        let mut prev_inside = true;
-        let clip_iter = iter
-            .chain(self.vertices().take(n))
-            .copied()
+        // Clip vertices
+        let mut iter = self.vertices().copied();
+        let mut first = None;
+        let mut last = None;
+        let mut prev = iter.next()?;
+        let mut prev_inside = disk.contains(prev);
+        let mut iter = iter
+            .chain([prev])
             .flat_map(|v| {
                 let inside = disk.contains(v);
+                dbg!((prev, prev_inside));
+                dbg!((v, inside));
                 let ret = match (prev_inside, inside) {
                     (true, true) => [
                         Some(ArcVertex {
@@ -85,7 +78,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
                         None,
                     ],
                     (true, false) => {
-                        last = disk.edge().intersect_to(&Line(prev, v)).unwrap()[1];
+                        last = Some(disk.edge().intersect(&Line(prev, v)).unwrap()[1]);
                         [
                             Some(ArcVertex {
                                 point: prev,
@@ -95,13 +88,20 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
                         ]
                     }
                     (false, true) => {
-                        let clip = disk.edge().intersect_to(&Line(prev, v)).unwrap()[0];
+                        let clip = disk.edge().intersect(&Line(prev, v)).unwrap()[0];
                         [
-                            Some(ArcVertex {
-                                point: last,
-                                sagitta: disk.radius
-                                    - Line(last, clip).signed_distance(disk.center),
-                            }),
+                            if let Some(last) = last {
+                                Some(ArcVertex {
+                                    point: last,
+                                    sagitta: disk.radius
+                                        - Line(last, clip).signed_distance(disk.center),
+                                })
+                            } else {
+                                if first.is_none() {
+                                    first = Some(clip);
+                                }
+                                None
+                            },
                             Some(ArcVertex {
                                 point: clip,
                                 sagitta: 0.0,
@@ -110,29 +110,56 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
                     }
                     (false, false) => match disk.edge().intersect(&LineSegment(prev, v)) {
                         Some([Some(a), Some(b)]) => {
+                            dbg!((a, b));
                             let ret = [
-                                Some(ArcVertex {
-                                    point: last,
-                                    sagitta: disk.radius
-                                        - Line(last, a).signed_distance(disk.center),
-                                }),
+                                if let Some(last) = last {
+                                    Some(ArcVertex {
+                                        point: last,
+                                        sagitta: disk.radius
+                                            - Line(last, a).signed_distance(disk.center),
+                                    })
+                                } else {
+                                    if first.is_none() {
+                                        first = Some(a);
+                                    }
+                                    None
+                                },
                                 Some(ArcVertex {
                                     point: a,
                                     sagitta: 0.0,
                                 }),
                             ];
-                            last = b;
+                            last = Some(b);
                             ret
                         }
                         _ => [None, None],
                     },
                 };
+                dbg!(ret);
                 prev_inside = inside;
                 prev = v;
                 ret
             })
-            .flatten();
-        let result = ArcPolygon::<W>::from_iter(clip_iter);
+            .flatten()
+            // .chain(first.zip(last).map(|(a, b)| ArcVertex {
+            //     point: b,
+            //     sagitta: disk.radius - Line(b, a).signed_distance(disk.center),
+            // }))
+            ;
+
+        // Deduplicate vertices
+        let mut prev = iter.next()?;
+        let iter = iter.chain([prev]).filter_map(|v| {
+            let ret = if (prev.point - v.point).abs().max_element() > EPS {
+                Some(prev)
+            } else {
+                None
+            };
+            prev = v;
+            ret
+        });
+
+        let result = ArcPolygon::<W>::from_iter(iter);
         if !result.is_empty() {
             Some(result)
         } else {
