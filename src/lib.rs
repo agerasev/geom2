@@ -15,7 +15,7 @@ pub use self::{
     circle::{Circle, Disk},
     line::{Line, LineSegment},
     plane::HalfPlane,
-    polygon::{Edge, Polygon, Vertex},
+    polygon::{Edge, Polygon, Vertex, circle::ArcPolygon},
     util::{AsIterator, AsMap},
 };
 

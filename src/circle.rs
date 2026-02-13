@@ -12,6 +12,12 @@ pub struct Circle {
     pub radius: f32,
 }
 
+impl Circle {
+    pub fn fill(&self) -> Disk {
+        Disk(*self)
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Disk(pub Circle);
 
