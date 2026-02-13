@@ -141,10 +141,10 @@ fn intersect_polygon() {
     assert_eq!(
         intersection,
         Polygon::new([
-            Vec2::new(1.0, 1.0),
             Vec2::new(2.0, 1.0),
             Vec2::new(2.0, 2.0),
             Vec2::new(1.0, 2.0),
+            Vec2::new(1.0, 1.0),
         ])
     )
 }

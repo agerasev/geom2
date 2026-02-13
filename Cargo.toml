@@ -9,11 +9,16 @@ homepage = "https://github.com/agerasev/geom2"
 repository = "https://github.com/agerasev/geom2"
 documentation = "https://docs.rs/geom2"
 
+[features]
+approx = ["dep:approx", "glam/approx"]
+
 [dependencies]
+genawaiter = "0.99.1"
 glam = { version = "0.31.0", default-features = false, features = [
     "nostd-libm",
 ] }
 either = { version = "1.15.0", default-features = false }
+approx = { version = "0.5.1", optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"

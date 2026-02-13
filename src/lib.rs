@@ -10,12 +10,13 @@ mod util;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use self::util::approx::impl_approx_eq;
 pub use self::{
     arc::{Arc, ArcVertex, DiskSegment},
     circle::{Circle, Disk},
     line::{Line, LineSegment},
     plane::HalfPlane,
-    polygon::{Edge, Polygon, Vertex},
+    polygon::{Edge, Polygon, Vertex, circle::ArcPolygon},
     util::{AsIterator, AsMap},
 };
 
@@ -89,6 +90,8 @@ impl Moment {
         Self { area, centroid }
     }
 }
+
+impl_approx_eq!(Moment, f32, area, centroid);
 
 impl<T: Closed> Closed for Option<T> {
     fn winding_number_2(&self, point: Vec2) -> i32 {

@@ -4,6 +4,7 @@ pub mod line;
 use crate::AsIterator;
 use core::{
     fmt::{self, Debug, Formatter},
+    iter::Copied,
     marker::PhantomData,
 };
 use glam::Vec2;
@@ -46,15 +47,15 @@ impl<T: Vertex + PartialEq, U: AsIterator<Item = T> + ?Sized, V: AsIterator<Item
 }
 
 impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> Polygon<V, T> {
-    pub fn vertices(&self) -> V::RefIter<'_> {
-        self.vertices.iter()
+    pub fn vertices(&self) -> Copied<V::RefIter<'_>> {
+        self.vertices.iter().copied()
     }
 
     pub fn is_empty(&self) -> bool {
         self.vertices().next().is_none()
     }
 
-    fn vertices_window<const N: usize>(&self) -> impl Iterator<Item = [&T; N]> {
+    fn vertices_window<const N: usize>(&self) -> impl Iterator<Item = [T; N]> {
         self.vertices()
             .chain(self.vertices()) // If window size is greater that number of vertices then iterator is empty
             .scan([None; N], |w, v| {
@@ -69,7 +70,7 @@ impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> Polygon<V, T> {
 
     pub fn edges(&self) -> impl Iterator<Item = T::Edge> {
         self.vertices_window()
-            .map(|[a, b]| T::Edge::from_vertices(a, b))
+            .map(|[a, b]| T::Edge::from_vertices(&a, &b))
     }
 }
 

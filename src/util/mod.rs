@@ -1,3 +1,5 @@
+pub mod approx;
+
 use core::{iter::Map, marker::PhantomData};
 
 pub trait AsIterator {
