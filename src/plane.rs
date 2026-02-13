@@ -23,7 +23,7 @@ impl HalfPlane {
     /// Construct from two points lying on edge.
     ///
     /// When looking from the first point to the second one, then the left side is inside the half-plane while the right side is outside.
-    pub fn from_edge(a: Vec2, b: Vec2) -> Self {
+    pub fn from_edge(Line(a, b): Line) -> Self {
         Self::from_normal(a, -(b - a).perp().normalize())
     }
 

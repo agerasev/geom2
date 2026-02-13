@@ -1,5 +1,6 @@
 use crate::{
-    Arc, ArcVertex, Closed, DiskSegment, HalfPlane, Integrable, Intersect, Line, Moment, Polygon,
+    Arc, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line, Moment,
+    Polygon,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -62,23 +63,63 @@ impl Intersect<Line> for Circle {
         if line.is_degenerate() {
             return None;
         }
-        // Line direction
-        let d = (line.1 - line.0).sqrt();
-        // Some point on the line (relative to the circle center)
-        let p = line.0 - self.center;
-        // The closest point on the line to the circle center (relative to the circle center)
-        let m = p - p.project_onto(d);
-        let h2 = self.radius.powi(2) - m.length_squared();
-        if h2 < 0.0 {
-            // There's no intersection
+        let plane = HalfPlane::from_edge(*line);
+        match self.intersect(&plane)? {
+            Either::Left(arc) => Some([arc.points.0, arc.points.1]),
+            Either::Right(circle) => {
+                if plane.distance(circle.center) > -circle.radius {
+                    // Tangent line
+                    let point = circle.center
+                        + (plane.boundary_point() - circle.center)
+                            .project_onto_normalized(plane.normal);
+                    Some([point, point])
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+impl Intersect<HalfPlane> for Circle {
+    type Output = Either<Arc, Circle>;
+    fn intersect(&self, plane: &HalfPlane) -> Option<Self::Output> {
+        let normal = plane.normal;
+        let apothem = plane.distance(self.center);
+        if apothem > self.radius {
             return None;
         }
+        if apothem <= EPS - self.radius {
+            return Some(Either::Right(*self));
+        }
         // Half length of the chord
-        let h = h2.sqrt();
+        let half_chord = (self.radius.powi(2) - apothem.powi(2)).sqrt();
+        // Midpoint of the chord
+        let midpoint = self.center - apothem * normal;
+        Some(Either::Left(Arc {
+            points: (
+                midpoint + normal.perp() * half_chord,
+                midpoint - normal.perp() * half_chord,
+            ),
+            sagitta: self.radius - apothem,
+        }))
+    }
+}
 
-        let midpoint = self.center + m;
-        let arm = h * d;
-        Some([midpoint - arm, midpoint + arm])
+impl Intersect<Circle> for HalfPlane {
+    type Output = Either<Arc, Circle>;
+    fn intersect(&self, circle: &Circle) -> Option<Self::Output> {
+        circle.intersect(self)
+    }
+}
+
+impl Intersect<HalfPlane> for Disk {
+    type Output = Either<DiskSegment, Disk>;
+    fn intersect(&self, plane: &HalfPlane) -> Option<Self::Output> {
+        Some(match self.edge().intersect(plane)? {
+            Either::Left(arc) => Either::Left(DiskSegment(arc)),
+            Either::Right(circle) => Either::Right(Disk(circle)),
+        })
     }
 }
 
@@ -86,28 +127,6 @@ impl Intersect<Disk> for HalfPlane {
     type Output = Either<DiskSegment, Disk>;
     fn intersect(&self, disk: &Disk) -> Option<Self::Output> {
         disk.intersect(self)
-    }
-}
-
-impl Intersect<HalfPlane> for Disk {
-    type Output = Either<DiskSegment, Disk>;
-    fn intersect(&self, other: &HalfPlane) -> Option<Self::Output> {
-        let normal = other.normal;
-        let apothem = -other.distance(self.center);
-        if apothem > self.radius {
-            return None;
-        }
-        if apothem < -self.radius {
-            return Some(Either::Right(*self));
-        }
-        // Half length of the chord
-        let h = (self.radius.powi(2) - apothem.powi(2)).sqrt();
-        // Midpoint of the chord
-        let m = self.center + apothem * normal;
-        Some(Either::Left(DiskSegment(Arc {
-            points: (m + normal.perp() * h, m - normal.perp() * h),
-            sagitta: self.radius - apothem,
-        })))
     }
 }
 

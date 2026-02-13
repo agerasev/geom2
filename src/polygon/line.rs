@@ -1,5 +1,5 @@
 use crate::{
-    AsIterator, Closed, EPS, HalfPlane, Integrable, IntersectTo, LineSegment, Moment, Polygon,
+    AsIterator, Closed, EPS, HalfPlane, Integrable, IntersectTo, Line, LineSegment, Moment, Polygon,
 };
 use glam::Vec2;
 
@@ -123,7 +123,7 @@ impl<
 
         // Sutherland-Hodgman polygon clipping algorithm
         for LineSegment(a, b) in other.edges() {
-            let plane = HalfPlane::from_edge(a, b);
+            let plane = HalfPlane::from_edge(Line(a, b));
             result = result.intersect_to(&plane)?;
         }
 

@@ -1,4 +1,4 @@
-use crate::{Closed, HalfPlane};
+use crate::{Closed, HalfPlane, Line};
 use approx::assert_abs_diff_eq;
 use core::f32::consts::PI;
 use glam::Vec2;
@@ -7,7 +7,7 @@ const TEST_EPS: f32 = 1e-6;
 
 #[test]
 fn is_inside() {
-    let plane = HalfPlane::from_edge(Vec2::new(0.0, 1.0), Vec2::new(1.0, 0.0));
+    let plane = HalfPlane::from_edge(Line(Vec2::new(0.0, 1.0), Vec2::new(1.0, 0.0)));
 
     // Points on the right side should be outside
     assert!(!plane.contains(Vec2::new(0.0, 0.0)));
@@ -37,7 +37,7 @@ fn from_normal() {
 fn from_edge() {
     {
         // Horizontal edge from (0,0) to (1,0)
-        let plane = HalfPlane::from_edge(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0));
+        let plane = HalfPlane::from_edge(Line(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0)));
 
         // When looking from (0,0) to (1,0), left side is +Y direction
         assert!(plane.contains(Vec2::new(0.5, 1.0))); // Above edge - inside
@@ -46,7 +46,7 @@ fn from_edge() {
 
     {
         // Vertical edge from (0,0) to (0,1)
-        let plane = HalfPlane::from_edge(Vec2::new(0.0, 0.0), Vec2::new(0.0, 1.0));
+        let plane = HalfPlane::from_edge(Line(Vec2::new(0.0, 0.0), Vec2::new(0.0, 1.0)));
 
         // When looking from (0,0) to (0,1), left side is -X direction
         assert!(plane.contains(Vec2::new(-1.0, 0.5))); // Left of edge - inside

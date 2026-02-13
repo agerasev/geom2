@@ -68,18 +68,18 @@ impl Deref for DiskSegment {
 impl Closed for DiskSegment {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         let (a, b) = self.0.points;
-        let c = 0.5 * (a + b);
-        let s = self.0.sagitta.abs();
-        if s < EPS {
+        let midpoint = 0.5 * (a + b);
+        let sagitta = self.0.sagitta.abs();
+        if sagitta < EPS {
             return 0;
         }
 
-        let h = 0.5 * (b - a).length();
-        let radius = (h.powi(2) + s.powi(2)) / (2.0 * s);
-        let normal = -(b - a).perp() / (2.0 * h) * self.0.sagitta.signum();
-        let center = c + normal * (s - radius);
+        let half_chord = 0.5 * (b - a).length();
+        let radius = (half_chord.powi(2) + sagitta.powi(2)) / (2.0 * sagitta);
+        let normal = -(b - a).perp() / (2.0 * half_chord) * self.0.sagitta.signum();
+        let center = midpoint + normal * (sagitta - radius);
 
-        if Disk::new(center, radius).contains(point) && (point - c).dot(normal) > 0.0 {
+        if Disk::new(center, radius).contains(point) && (point - midpoint).dot(normal) > 0.0 {
             2 * self.0.sagitta.signum() as i32
         } else {
             0

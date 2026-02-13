@@ -29,21 +29,14 @@ fn contains() {
 fn intersect_half_plane_outside() {
     // Disk completely outside half-plane
     let disk = Disk::new(Vec2::new(0.0, 0.0), 1.0);
-    let half_plane = HalfPlane::from_normal(Vec2::new(2.0, 0.0), Vec2::new(1.0, 0.0));
-    // Disk center at (0,0), half-plane boundary at x=2, normal points right (positive x)
-    // Disk radius 1, so furthest point is at x=1, which is still left of boundary at x=2
-    // Since normal points from inside to outside, and disk is completely on the "outside" side
-    // (distance from center to plane = -2, apothem = 2 > radius 1)
+    let half_plane = HalfPlane::from_normal(Vec2::new(-2.0, 0.0), Vec2::new(1.0, 0.0));
     assert!(disk.intersect(&half_plane).is_none());
 }
 
 #[test]
 fn intersect_half_plane_inside() {
-    // Disk completely inside half-plane
     let disk = Disk::new(Vec2::new(0.0, 0.0), 1.0);
-    let half_plane = HalfPlane::from_normal(Vec2::new(-2.0, 0.0), Vec2::new(1.0, 0.0));
-    // Disk center at (0,0), half-plane boundary at x=-2, normal points right (positive x)
-    // Disk is completely on the "inside" side (distance from center to plane = 2, apothem = -2 < -radius)
+    let half_plane = HalfPlane::from_normal(Vec2::new(2.0, 0.0), Vec2::new(1.0, 0.0));
     let result = disk.intersect(&half_plane);
     assert!(result.is_some());
     match result.unwrap() {
@@ -55,31 +48,33 @@ fn intersect_half_plane_inside() {
 }
 
 #[test]
-fn intersect_half_plane_intersecting() {
+fn intersect_half_plane() {
     // Disk intersecting half-plane
     let disk = Disk::new(Vec2::new(0.0, 0.0), 1.0);
-    let half_plane = HalfPlane::from_normal(Vec2::new(0.5, 0.0), Vec2::new(1.0, 0.0));
-    // Disk center at (0,0), half-plane boundary at x=0.5, normal points right
-    // Disk intersects the half-plane (distance from center to plane = -0.5, apothem = 0.5 < radius 1)
+    let half_plane = HalfPlane::from_normal(Vec2::new(0.5, 0.0), Vec2::new(-1.0, 0.0));
+    assert_eq!(half_plane.distance(disk.center), 0.5);
     let result = disk.intersect(&half_plane);
     assert!(result.is_some());
     match result.unwrap() {
         Either::Left(disk_segment) => {
-            // Verify the disk segment properties
             let arc = disk_segment.0;
             // Chord endpoints should be symmetric about the x-axis
             assert_abs_diff_eq!(arc.points.0.y, -arc.points.1.y, epsilon = TEST_EPS);
             assert_abs_diff_eq!(arc.points.0.x, arc.points.1.x, epsilon = TEST_EPS);
+            // Endpoints should be ordered from bottom to top
+            assert!(arc.points.0.y < arc.points.1.y);
             // Chord midpoint should be at (0.5, 0) since apothem = 0.5
             let chord_mid = 0.5 * (arc.points.0 + arc.points.1);
-            assert_abs_diff_eq!(chord_mid.x, 0.5, epsilon = TEST_EPS);
-            assert_abs_diff_eq!(chord_mid.y, 0.0, epsilon = TEST_EPS);
+            assert_abs_diff_eq!(chord_mid, Vec2::new(0.5, 0.0), epsilon = TEST_EPS);
             // Sagitta should be radius - apothem = 1.0 - 0.5 = 0.5
             assert_abs_diff_eq!(arc.sagitta, 0.5, epsilon = TEST_EPS);
             // Chord length should be 2*h where h = sqrt(radius^2 - apothem^2) = sqrt(1 - 0.25) = sqrt(0.75)
             let expected_h = (1.0f32 - 0.5f32.powi(2)).sqrt();
             let chord_vec = arc.points.1 - arc.points.0;
             assert_abs_diff_eq!(chord_vec.length() / 2.0, expected_h, epsilon = TEST_EPS);
+            // Arc should be bent to the right side
+            assert!(disk_segment.contains(Vec2::new(0.75, 0.0)));
+            assert!(!disk_segment.contains(Vec2::new(0.0, 0.0)));
         }
         Either::Right(_) => panic!("Expected disk to intersect half-plane"),
     }
@@ -89,9 +84,7 @@ fn intersect_half_plane_intersecting() {
 fn intersect_half_plane_tangent() {
     // Disk tangent to half-plane (edge case)
     let disk = Disk::new(Vec2::new(0.0, 0.0), 1.0);
-    let half_plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(1.0, 0.0));
-    // Disk center at (0,0), half-plane boundary at x=1, normal points right
-    // Disk is tangent to half-plane (distance from center to plane = -1, apothem = 1 = radius)
+    let half_plane = HalfPlane::from_normal(Vec2::new(1.0, 0.0), Vec2::new(-1.0, 0.0));
     let result = disk.intersect(&half_plane);
     assert!(result.is_some());
     match result.unwrap() {
@@ -108,30 +101,24 @@ fn intersect_half_plane_tangent() {
 }
 
 #[test]
-fn intersect_half_plane_negative_apothem() {
+fn intersect_half_plane_more_than_half() {
     // Disk intersecting half-plane with negative apothem
     // Center is inside half-plane, but disk extends outside
     let disk = Disk::new(Vec2::new(0.0, 0.0), 2.0);
-    let half_plane = HalfPlane::from_normal(Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0));
-    // Disk center at (0,0), half-plane boundary at x=-1, normal points right
-    // Distance from center to plane = 0.dot((1,0)) - (-1) = 1
-    // Since point is outside (distance positive), apothem = -distance = -1
-    // apothem = -1, radius = 2, so |apothem| < radius → intersection
-    // apothem is negative (center inside half-plane)
+    let half_plane = HalfPlane::from_normal(Vec2::new(-1.0, 0.0), Vec2::new(-1.0, 0.0));
     let result = disk.intersect(&half_plane);
     assert!(result.is_some());
     match result.unwrap() {
         Either::Left(disk_segment) => {
             let arc = disk_segment.0;
-            // Verify the disk segment properties
             // Chord endpoints should be symmetric about the x-axis
             assert_abs_diff_eq!(arc.points.0.y, -arc.points.1.y, epsilon = TEST_EPS);
             assert_abs_diff_eq!(arc.points.0.x, arc.points.1.x, epsilon = TEST_EPS);
+            // Endpoints should be ordered from bottom to top
+            assert!(arc.points.0.y < arc.points.1.y);
             // Chord midpoint should be at (-1, 0) since apothem = -1
-            // (center at (0,0), move -1 along normal (1,0) to get to chord midpoint)
             let chord_mid = 0.5 * (arc.points.0 + arc.points.1);
-            assert_abs_diff_eq!(chord_mid.x, -1.0, epsilon = TEST_EPS);
-            assert_abs_diff_eq!(chord_mid.y, 0.0, epsilon = TEST_EPS);
+            assert_abs_diff_eq!(chord_mid, Vec2::new(-1.0, 0.0), epsilon = TEST_EPS);
             // Sagitta should be radius - apothem = 2.0 - (-1.0) = 3.0
             // (since apothem is negative, sagitta > radius)
             assert_abs_diff_eq!(arc.sagitta, 3.0, epsilon = TEST_EPS);
@@ -139,6 +126,9 @@ fn intersect_half_plane_negative_apothem() {
             let expected_h = (4.0f32 - 1.0f32).sqrt(); // radius^2 - apothem^2 = 4 - 1 = 3
             let chord_vec = arc.points.1 - arc.points.0;
             assert_abs_diff_eq!(chord_vec.length() / 2.0, expected_h, epsilon = TEST_EPS);
+            // Arc should be bent to the right side
+            assert!(disk_segment.contains(Vec2::new(0.0, 0.0)));
+            assert!(!disk_segment.contains(Vec2::new(-1.5, 0.0)));
         }
         Either::Right(_) => panic!("Expected disk to intersect half-plane"),
     }
