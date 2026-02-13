@@ -27,8 +27,10 @@ fn moment_segments() {
             sagitta: radius,
         },
     ]);
+    let from_disk = disk.polygon::<2>();
 
     assert_abs_diff_eq!(arc_poly.moment(), disk.moment(), epsilon = TEST_EPS);
+    assert_abs_diff_eq!(from_disk.moment(), disk.moment(), epsilon = TEST_EPS);
 }
 
 #[test]
@@ -54,12 +56,14 @@ fn moment_arc_triangle() {
             sagitta: 0.5 * radius,
         },
     ]);
+    let from_disk = disk.polygon::<3>();
 
     assert_abs_diff_eq!(arc_poly.moment(), disk.moment(), epsilon = TEST_EPS);
+    assert_abs_diff_eq!(from_disk.moment(), disk.moment(), epsilon = TEST_EPS);
 }
 
 #[test]
-fn intersect_polygon_circle_inside() {
+fn intersect_circle_inside_polygon() {
     let disk = Circle {
         center: Vec2::new(2.345, 3.456),
         radius: 1.234,
@@ -68,9 +72,9 @@ fn intersect_polygon_circle_inside() {
     let Circle { center, radius } = disk.edge();
 
     let poly = Polygon::new([
-        center + 2.0 * radius * Vec2::from_angle(0.0),
-        center + 2.0 * radius * Vec2::from_angle(2.0 * PI / 3.0),
-        center + 2.0 * radius * Vec2::from_angle(4.0 * PI / 3.0),
+        center + (2.0 * radius + TEST_EPS) * Vec2::from_angle(0.0),
+        center + (2.0 * radius + TEST_EPS) * Vec2::from_angle(2.0 * PI / 3.0),
+        center + (2.0 * radius + TEST_EPS) * Vec2::from_angle(4.0 * PI / 3.0),
     ]);
 
     let intersection: ArcPolygon<Vec<ArcVertex>> = poly.intersect_to(&disk).unwrap();
@@ -79,7 +83,27 @@ fn intersect_polygon_circle_inside() {
 }
 
 #[test]
-fn intersect_polygon_circle_sector() {
+fn intersect_circle_outside_polygon() {
+    let disk = Circle {
+        center: Vec2::new(2.345, 3.456),
+        radius: 1.234,
+    }
+    .fill();
+    let Circle { center, radius } = disk.edge();
+
+    let poly = Polygon::new([
+        center + (radius - TEST_EPS) * Vec2::from_angle(0.0),
+        center + (radius - TEST_EPS) * Vec2::from_angle(2.0 * PI / 3.0),
+        center + (radius - TEST_EPS) * Vec2::from_angle(4.0 * PI / 3.0),
+    ]);
+
+    let intersection: ArcPolygon<Vec<ArcVertex>> = poly.intersect_to(&disk).unwrap();
+
+    assert_abs_diff_eq!(intersection.moment(), poly.moment(), epsilon = TEST_EPS);
+}
+
+#[test]
+fn intersect_circle_polygon_sector() {
     let disk = Circle {
         center: Vec2::new(0.0, 0.0),
         radius: 1.0,
@@ -99,7 +123,7 @@ fn intersect_polygon_circle_sector() {
 }
 
 #[test]
-fn intersect_polygon_circle_stripe() {
+fn intersect_circle_polygon_stripe() {
     let disk = Circle {
         center: Vec2::new(0.0, 0.0),
         radius: 1.0,

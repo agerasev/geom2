@@ -13,6 +13,7 @@ documentation = "https://docs.rs/geom2"
 approx = ["dep:approx", "glam/approx"]
 
 [dependencies]
+genawaiter = "0.99.1"
 glam = { version = "0.31.0", default-features = false, features = [
     "nostd-libm",
 ] }

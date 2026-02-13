@@ -1,6 +1,7 @@
 use crate::{
     AsIterator, Closed, EPS, HalfPlane, Integrable, IntersectTo, Line, LineSegment, Moment, Polygon,
 };
+use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
 
 impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
@@ -69,46 +70,46 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
 {
     fn intersect_to(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
         // Clip vertices
-        let mut iter = self.vertices().copied();
-        let mut prev = iter.next()?;
-        let mut prev_inside = plane.contains(prev);
-        let mut iter = iter
-            .chain(self.vertices().next().copied())
-            .flat_map(|v| {
+        let_gen!(gen_, {
+            let mut iter = self.vertices();
+            let mut prev = match iter.next() {
+                Some(x) => x,
+                None => return,
+            };
+            let mut prev_inside = plane.contains(prev);
+            for v in iter.chain([prev]) {
                 let inside = plane.contains(v);
-                let ret = match (prev_inside, inside) {
-                    (true, true) => [Some(prev), None],
-                    (true, false) => [
-                        Some(prev),
-                        Some(plane.edge().intersect_to(&LineSegment(prev, v)).unwrap()),
-                    ],
-                    (false, true) => [
-                        None,
-                        Some(plane.edge().intersect_to(&LineSegment(prev, v)).unwrap()),
-                    ],
-                    (false, false) => [None, None],
+                match (prev_inside, inside) {
+                    (true, true) => {
+                        yield_!(prev);
+                    }
+                    (true, false) => {
+                        yield_!(prev);
+                        yield_!(plane.edge().intersect_to(&Line(prev, v)).unwrap_or(v));
+                    }
+                    (false, true) => {
+                        yield_!(plane.edge().intersect_to(&Line(prev, v)).unwrap_or(prev));
+                    }
+                    (false, false) => {}
                 };
                 prev_inside = inside;
                 prev = v;
-                ret
-            })
-            .flatten();
-
-        // Deduplicate vertices
-        let mut prev = iter.next()?;
-        let iter = iter.chain([prev]).filter_map(|v| {
-            let ret = if (prev - v).abs().max_element() > EPS {
-                Some(prev)
-            } else {
-                None
-            };
-            prev = v;
-            ret
+            }
         });
+        let mut iter = gen_.into_iter();
 
-        let result = Polygon::<W>::from_iter(iter);
-        if !result.is_empty() {
-            Some(result)
+        if let Some(mut prev) = iter.next() {
+            // Deduplicate vertices
+            let iter = iter.chain([prev]).filter_map(|v| {
+                let ret = if (prev - v).abs().max_element() > EPS {
+                    Some(prev)
+                } else {
+                    None
+                };
+                prev = v;
+                ret
+            });
+            Some(Polygon::<W>::from_iter(iter))
         } else {
             None
         }
@@ -130,7 +131,7 @@ impl<
 > IntersectTo<Polygon<U>, Polygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, other: &Polygon<U>) -> Option<Polygon<W>> {
-        let mut result = Polygon::from_iter(self.vertices().copied());
+        let mut result = Polygon::from_iter(self.vertices());
 
         // Sutherland-Hodgman polygon clipping algorithm
         for LineSegment(a, b) in other.edges() {

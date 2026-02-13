@@ -1,6 +1,6 @@
 use crate::{
-    Arc, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line, LineSegment,
-    Moment, Polygon, impl_approx_eq,
+    Arc, ArcPolygon, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line,
+    LineSegment, Moment, Polygon, impl_approx_eq,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -27,6 +27,9 @@ impl Disk {
     }
     pub fn edge(&self) -> Circle {
         self.0
+    }
+    pub fn polygon<const N: usize>(&self) -> ArcPolygon<[ArcVertex; N]> {
+        ArcPolygon::<[ArcVertex; N]>::from_circle(self.edge())
     }
 }
 
