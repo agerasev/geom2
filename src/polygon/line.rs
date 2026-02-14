@@ -55,7 +55,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Integrable for Polygon<V> {
             area += cross;
             centroid += (a + b) * cross;
         }
-        area = area.abs() * 0.5;
+        area *= 0.5;
         if area < EPS {
             centroid = Vec2::ZERO;
         } else {

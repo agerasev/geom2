@@ -111,6 +111,9 @@ impl Edge for LineSegment {
 }
 impl Vertex for Vec2 {
     type Edge = LineSegment;
+    fn pos(&self) -> Vec2 {
+        *self
+    }
 }
 
 impl_approx_eq!(Line, f32, 0, 1);

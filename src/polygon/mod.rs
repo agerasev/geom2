@@ -1,7 +1,7 @@
 pub mod circle;
 pub mod line;
 
-use crate::AsIterator;
+use crate::{AsIterator, EPS};
 use core::{
     fmt::{self, Debug, Formatter},
     iter::Copied,
@@ -22,6 +22,9 @@ pub trait Edge: Copy {
 pub trait Vertex: Copy {
     /// The edge type for this vertex.
     type Edge: Edge<Vertex = Self>;
+
+    /// Get coordinates of the vertex.
+    fn pos(&self) -> Vec2;
 }
 
 /// A polygon defined by a sequence of vertices.
@@ -44,16 +47,32 @@ pub trait Vertex: Copy {
 pub struct Polygon<V: AsIterator<Item = T> + ?Sized, T: Vertex = Vec2> {
     _ghost: PhantomData<T>,
     /// The vertices of the polygon.
-    pub vertices: V,
+    vertices: V,
 }
 
 impl<T: Vertex, V: AsIterator<Item = T>> Polygon<V, T> {
     /// Create a new polygon from a sequence of vertices.
+    ///
+    /// # Note
+    /// This library assumes counterclockwise (CCW) orientation for all polygons.
+    /// In debug builds, this is validated with `debug_assert!`.
+    ///
+    /// # Panics
+    /// In debug builds, panics if the polygon has clockwise (CW) orientation.
     pub fn new(vertices: V) -> Self {
-        Self {
+        let poly = Self {
             vertices,
             _ghost: PhantomData,
-        }
+        };
+        debug_assert!(
+            poly.orientation() >= 0,
+            "Polygon must have counterclockwise (CCW) orientation"
+        );
+        poly
+    }
+
+    pub fn into_inner(self) -> V {
+        self.vertices
     }
 }
 
@@ -102,6 +121,43 @@ impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> Polygon<V, T> {
     pub fn edges(&self) -> impl Iterator<Item = T::Edge> {
         self.vertices_window()
             .map(|[a, b]| T::Edge::from_vertices(&a, &b))
+    }
+
+    /// Compute the signed area of the polygon.
+    ///
+    /// The area is positive if the polygon vertices are in counterclockwise (CCW) order,
+    /// and negative if in clockwise (CW) order.
+    ///
+    /// # Note
+    /// CCW orientation is assumed for all polygons in geometric operations.
+    /// Use [`Self::orientation()`] to check polygon orientation.
+    fn frame_area(&self) -> f32 {
+        let mut area = 0.0;
+        for [a, b] in self.vertices_window::<2>() {
+            area += a.pos().perp_dot(b.pos());
+        }
+        area * 0.5
+    }
+
+    /// Determine the orientation of the polygon.
+    ///
+    /// Returns:
+    /// - `1` if the polygon is counterclockwise (CCW)
+    /// - `-1` if the polygon is clockwise (CW)
+    /// - `0` if the polygon is degenerate (area ≈ 0)
+    ///
+    /// # Note
+    /// This library assumes CCW orientation for all polygons in geometric operations.
+    /// Use `debug_assert!(polygon.orientation() >= 0)` to validate this assumption in debug builds.
+    pub fn orientation(&self) -> i32 {
+        let area = self.frame_area();
+        if area.abs() < EPS {
+            0
+        } else if area > 0.0 {
+            1
+        } else {
+            -1
+        }
     }
 }
 

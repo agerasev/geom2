@@ -45,7 +45,15 @@ pub struct Disk(pub Circle);
 
 impl Disk {
     /// Create a new disk with the given center and radius.
+    ///
+    /// # Panics
+    /// In debug builds, panics if `radius` is negative.
     pub fn new(center: Vec2, radius: f32) -> Self {
+        debug_assert!(
+            radius >= 0.0,
+            "Disk radius must be non-negative, got {}",
+            radius
+        );
         Disk(Circle { center, radius })
     }
 
@@ -160,7 +168,10 @@ impl Intersect<HalfPlane> for Circle {
         if apothem > self.radius {
             return None;
         }
-        if apothem <= EPS - self.radius {
+        // Check if the circle is completely inside the half-plane
+        // The farthest point of the circle from the plane is at distance (radius + apothem)
+        // If this distance is <= EPS, consider the circle fully inside
+        if self.radius + apothem <= EPS {
             return Some(Either::Right(*self));
         }
         // Half length of the chord

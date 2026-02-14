@@ -53,6 +53,16 @@ impl Edge for Arc {
 }
 impl Vertex for ArcVertex {
     type Edge = Arc;
+    fn pos(&self) -> Vec2 {
+        self.point
+    }
+}
+
+impl Deref for ArcVertex {
+    type Target = Vec2;
+    fn deref(&self) -> &Self::Target {
+        &self.point
+    }
 }
 
 /// Disk segment bounded by an arc and its chord.

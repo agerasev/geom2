@@ -9,7 +9,7 @@ use glam::Vec2;
 pub type ArcPolygon<V> = Polygon<V, ArcVertex>;
 
 impl<V: AsIterator<Item = ArcVertex> + ?Sized> ArcPolygon<V> {
-    pub fn as_polygon(&self) -> Polygon<impl AsIterator<Item = Vec2>, Vec2> {
+    pub fn frame(&self) -> Polygon<impl AsIterator<Item = Vec2>, Vec2> {
         Polygon::new(self.vertices.map(&|arc| &arc.point))
     }
 }
@@ -24,7 +24,7 @@ impl<const N: usize> ArcPolygon<[ArcVertex; N]> {
 
 impl<V: AsIterator<Item = ArcVertex> + ?Sized> Closed for ArcPolygon<V> {
     fn winding_number_2(&self, point: Vec2) -> i32 {
-        let mut winding_number = self.as_polygon().winding_number_2(point);
+        let mut winding_number = self.frame().winding_number_2(point);
 
         for arc in self.edges() {
             winding_number += DiskSegment(arc).winding_number_2(point);
@@ -36,7 +36,7 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> Closed for ArcPolygon<V> {
 
 impl<V: AsIterator<Item = ArcVertex> + ?Sized> Integrable for ArcPolygon<V> {
     fn moment(&self) -> Moment {
-        let mut moment = self.as_polygon().moment();
+        let mut moment = self.frame().moment();
 
         for arc in self.edges() {
             moment = moment.merge(DiskSegment(arc).moment());
