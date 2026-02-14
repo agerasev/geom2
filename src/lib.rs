@@ -42,13 +42,19 @@ pub trait Closed {
     }
 }
 
+/// A shape that has computable geometric moments (area, centroid).
 pub trait Integrable {
-    /// Moment of the shape
+    /// Compute the moment of the shape.
+    ///
+    /// The moment includes area (zeroth moment) and centroid (first moment).
     fn moment(&self) -> Moment;
 
+    /// Area of the shape.
     fn area(&self) -> f32 {
         self.moment().area
     }
+
+    /// Centroid (center of mass) of the shape.
     fn centroid(&self) -> Vec2 {
         self.moment().centroid
     }
@@ -60,7 +66,7 @@ pub trait Intersect<T: Intersect<Self, Output = Self::Output> + ?Sized> {
     fn intersect(&self, other: &T) -> Option<Self::Output>;
 }
 
-/// Insrsection of two figures where resulting figure type can be selected.
+/// Intersection of two figures where resulting figure type can be selected.
 pub trait IntersectTo<T: IntersectTo<Self, U> + ?Sized, U> {
     fn intersect_to(&self, other: &T) -> Option<U>;
 }

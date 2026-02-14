@@ -2,14 +2,34 @@ use crate::{EPS, Edge, Intersect, Vertex, impl_approx_eq};
 use glam::Vec2;
 
 /// Infinite line defined by two points lying on it.
+///
+/// ```text
+///      a           b
+/// <----*-----------*------------>
+///           Line(a, b)
+/// ```
+///
+/// The line extends infinitely in both directions.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Line(pub Vec2, pub Vec2);
 
 /// Line segment bounded by two points.
+///
+/// ```text
+///      a           b
+///      *-----------*
+///   LineSegment(a, b)
+/// ```
+///
+/// The segment includes all points between `a` and `b` and themselves.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct LineSegment(pub Vec2, pub Vec2);
 
 impl Line {
+    /// Check if the line is degenerate (the two defining points are too close).
+    ///
+    /// A line is degenerate if the distance between its defining points
+    /// is less than [`EPS`].
     pub fn is_degenerate(&self) -> bool {
         (self.1 - self.0).abs().max_element() < EPS
     }
@@ -51,7 +71,11 @@ impl LineSegment {
         Line(self.0, self.1).is_degenerate()
     }
 
-    // Check that point lies between endpoints, but not necessarily on the line
+    /// Check if a point lies between the segment's endpoints (inclusive).
+    ///
+    /// This checks if the point's projection onto the segment's line
+    /// falls between the endpoints, but does not require the point
+    /// to be exactly on the line.
     pub fn is_between(&self, point: Vec2) -> bool {
         let r = self.1 - self.0;
         let dot = (point - self.0).dot(r);

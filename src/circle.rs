@@ -6,28 +6,58 @@ use core::{f32::consts::PI, ops::Deref};
 use either::Either;
 use glam::Vec2;
 
+/// A circle defined by its center and radius.
+///
+/// ```text
+///      ..---..
+///    *         *
+///  /             \
+/// |               |
+/// |       +------>|
+/// |       c   r   |
+///  \             /
+///    .         .
+///      ``---``
+/// ```
+///
+/// Where `c` is the center and `r` is the radius.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Circle {
+    /// Center point of the circle.
     pub center: Vec2,
+    /// Radius of the circle.
     pub radius: f32,
 }
 
 impl Circle {
+    /// Create a filled disk from this circle.
     pub fn fill(&self) -> Disk {
         Disk(*self)
     }
 }
 
+/// A filled disk (circle with interior).
+///
+/// Where `c` is the center and `r` is the radius.
+/// The disk includes all points inside the circle.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Disk(pub Circle);
 
 impl Disk {
+    /// Create a new disk with the given center and radius.
     pub fn new(center: Vec2, radius: f32) -> Self {
         Disk(Circle { center, radius })
     }
+
+    /// Get the boundary circle of this disk.
     pub fn edge(&self) -> Circle {
         self.0
     }
+
+    /// Approximate the disk as a polygon with `N` vertices.
+    ///
+    /// Returns an `ArcPolygon` where each edge is a circular arc
+    /// approximating a segment of the circle.
     pub fn polygon<const N: usize>(&self) -> ArcPolygon<[ArcVertex; N]> {
         ArcPolygon::<[ArcVertex; N]>::from_circle(self.edge())
     }
@@ -62,7 +92,13 @@ impl Integrable for Disk {
 impl_approx_eq!(Circle, f32, center, radius);
 impl_approx_eq!(Disk, f32, 0);
 
-/// Order of output points must be the same as in the line
+/// Intersection of a circle with a line.
+///
+/// Returns the two intersection points as `[Vec2; 2]`, or `None` if the line
+/// doesn't intersect the circle. For a tangent line, both points are equal.
+///
+/// The points are ordered such that when traversing from `line.0` to `line.1`,
+/// the first intersection point is encountered before the second.
 impl Intersect<Line> for Circle {
     type Output = [Vec2; 2];
     fn intersect(&self, line: &Line) -> Option<Self::Output> {
@@ -71,7 +107,11 @@ impl Intersect<Line> for Circle {
         }
         let plane = HalfPlane::from_edge(*line);
         match self.intersect(&plane)? {
-            Either::Left(arc) => Some([arc.points.1, arc.points.0]),
+            Either::Left(arc) => {
+                // The arc points are ordered relative to the half-plane normal.
+                // Reverse them to match the line direction.
+                Some([arc.points.1, arc.points.0])
+            }
             Either::Right(circle) => {
                 if plane.distance(circle.center) > -circle.radius {
                     // Tangent line

@@ -1,6 +1,22 @@
 use crate::{Closed, Line, impl_approx_eq};
 use glam::Vec2;
 
+/// A half-plane defined by a boundary line.
+///
+/// The half-plane is the set of points on one side of a line.
+/// The boundary line is defined by a normal vector and an offset.
+/// The normal points from inside to outside.
+///
+/// ```text
+///              ^
+///    outside   | normal
+///              |
+/// -------------*------- boundary line
+/// //////////// ^ //////////
+/// // inside // | offset ///
+/// //////////// | //////////
+/// //////////// + (0,0) ////
+/// ```
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct HalfPlane {
     /// Normal of the half-plane edge, pointing from inside to outside.
@@ -13,7 +29,9 @@ pub struct HalfPlane {
 }
 
 impl HalfPlane {
-    /// Normal must be normalized.
+    /// Create a half-plane from a point on the boundary and a normal vector.
+    ///
+    /// The normal must be normalized and points from inside to outside.
     pub fn from_normal(point: Vec2, normal: Vec2) -> Self {
         Self {
             normal,
@@ -40,6 +58,7 @@ impl HalfPlane {
         self.normal * self.offset
     }
 
+    /// Get the boundary line of this half-plane.
     pub fn edge(&self) -> Line {
         let p = self.boundary_point();
         Line(p - 0.5 * self.normal.perp(), p + 0.5 * self.normal.perp())

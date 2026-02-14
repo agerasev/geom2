@@ -29,6 +29,7 @@ pub struct Arc {
 }
 
 impl Arc {
+    /// Get the chord connecting the endpoints of this arc.
     pub fn chord(&self) -> LineSegment {
         LineSegment(self.points.0, self.points.1)
     }
@@ -55,6 +56,9 @@ impl Vertex for ArcVertex {
 }
 
 /// Disk segment bounded by an arc and its chord.
+///
+/// The disk segment is the region between the arc and its chord.
+/// It includes all points inside the circle sector defined by the arc.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct DiskSegment(pub Arc);
 

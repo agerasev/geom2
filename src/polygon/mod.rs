@@ -9,21 +9,46 @@ use core::{
 };
 use glam::Vec2;
 
+/// Trait for edges of a polygon.
 pub trait Edge: Copy {
+    /// The vertex type for this edge.
     type Vertex: Vertex<Edge = Self>;
+
+    /// Create an edge from two vertices.
     fn from_vertices(a: &Self::Vertex, b: &Self::Vertex) -> Self;
 }
+
+/// Trait for vertices of a polygon.
 pub trait Vertex: Copy {
+    /// The edge type for this vertex.
     type Edge: Edge<Vertex = Self>;
 }
 
+/// A polygon defined by a sequence of vertices.
+///
+/// The polygon can have any vertex type `T` that implements [`Vertex`],
+/// and the vertices can be stored in any container `V` that implements [`AsIterator`].
+///
+/// ```text
+///     v4 *-----* v4
+///       /       \
+///      /         \
+///  v5 *           * v3
+///      \         /
+///       \       /
+///     v0 *-----* v2
+/// ```
+///
+/// Vertices are connected in order: v0 -> v1 -> v2 -> v3 -> v4 -> v5 -> v0.
 #[derive(Clone, Copy)]
 pub struct Polygon<V: AsIterator<Item = T> + ?Sized, T: Vertex = Vec2> {
     _ghost: PhantomData<T>,
+    /// The vertices of the polygon.
     pub vertices: V,
 }
 
 impl<T: Vertex, V: AsIterator<Item = T>> Polygon<V, T> {
+    /// Create a new polygon from a sequence of vertices.
     pub fn new(vertices: V) -> Self {
         Self {
             vertices,
@@ -47,10 +72,12 @@ impl<T: Vertex + PartialEq, U: AsIterator<Item = T> + ?Sized, V: AsIterator<Item
 }
 
 impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> Polygon<V, T> {
+    /// Get an iterator over the vertices of the polygon.
     pub fn vertices(&self) -> Copied<V::RefIter<'_>> {
         self.vertices.iter().copied()
     }
 
+    /// Check if the polygon has no vertices.
     pub fn is_empty(&self) -> bool {
         self.vertices().next().is_none()
     }
@@ -68,6 +95,10 @@ impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> Polygon<V, T> {
             .map(|(w, _)| w.map(|v| v.unwrap()))
     }
 
+    /// Get an iterator over the edges of the polygon.
+    ///
+    /// The edges are formed by connecting consecutive vertices,
+    /// including an edge from the last vertex back to the first.
     pub fn edges(&self) -> impl Iterator<Item = T::Edge> {
         self.vertices_window()
             .map(|[a, b]| T::Edge::from_vertices(&a, &b))
@@ -78,6 +109,7 @@ impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> Polygon<V, T>
 where
     for<'a> V::RefIter<'a>: ExactSizeIterator,
 {
+    /// Get the number of vertices in the polygon.
     pub fn len(&self) -> usize {
         self.vertices().len()
     }
