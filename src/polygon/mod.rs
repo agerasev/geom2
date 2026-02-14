@@ -33,13 +33,13 @@ pub trait Vertex: Copy {
 /// and the vertices can be stored in any container `V` that implements [`AsIterator`].
 ///
 /// ```text
-///     v4 *-----* v4
+///     v4 +-----+ v4
 ///       /       \
 ///      /         \
-///  v5 *           * v3
+///  v5 +           + v3
 ///      \         /
 ///       \       /
-///     v0 *-----* v2
+///     v0 +-----+ v2
 /// ```
 ///
 /// Vertices are connected in order: v0 -> v1 -> v2 -> v3 -> v4 -> v5 -> v0.

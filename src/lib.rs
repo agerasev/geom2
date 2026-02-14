@@ -1,3 +1,66 @@
+//! # geom2 - 2D Geometry Primitives and Operations
+//!
+//! A Rust library for 2D computational geometry with `no_std` support.
+//!
+//! ## Overview
+//!
+//! `geom2` provides a comprehensive set of 2D geometric primitives and operations
+//! for computational geometry applications. The library is designed with performance
+//! and correctness in mind, featuring robust handling of edge cases and
+//! floating-point precision issues.
+//!
+//! ## Key Features
+//!
+//! - **`no_std` compatible** - Works in embedded and constrained environments
+//! - **Comprehensive primitives** - Lines, circles, arcs, polygons, half-planes
+//! - **Geometric operations** - Intersection, containment, area calculation, winding numbers
+//! - **Robust floating-point handling** - EPS-based tolerance for numerical stability
+//! - **Generic design** - Flexible vertex and edge types with iterator-based APIs
+//! - **Approximation support** - Optional `approx` feature for approximate equality comparisons
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use geom2::{Line, LineSegment, Circle, Disk, Polygon, Closed, Integrable, Intersect};
+//! use glam::Vec2;
+//!
+//! // Create geometric primitives
+//! let line = Line(Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0));
+//! let disk = Disk::new(Vec2::new(0.0, 0.0), 1.0);
+//!
+//! // Check point containment
+//! assert!(disk.contains(Vec2::new(0.5, 0.5)));
+//!
+//! // Compute geometric properties
+//! let area = disk.area(); // π
+//! let centroid = disk.centroid(); // Vec2::new(0.0, 0.0)
+//!
+//! // Intersection operations
+//! let circle = Circle {
+//!     center: Vec2::new(0.0, 0.0),
+//!     radius: 1.0,
+//! };
+//! let intersections = circle.intersect(&line);
+//! ```
+//!
+//! ## Numerical Precision
+//!
+//! The library uses a global `EPS` constant (`1e-8`) for floating-point comparisons.
+//! All geometric operations are designed to handle edge cases and numerical
+//! instability within this tolerance.
+//!
+//! ## Features
+//!
+//! - **`approx`** - Enables approximate equality comparisons using the `approx` crate.
+//!   When enabled, geometric types implement `approx::AbsDiffEq` and `approx::RelativeEq`.
+//!
+//! ## Design Philosophy
+//!
+//! 1. **Correctness First** - Robust handling of degenerate cases and floating-point precision
+//! 2. **Performance** - Efficient algorithms with minimal allocations
+//! 3. **Flexibility** - Generic types that work with various storage backends
+//! 4. **`no_std` Compatibility** - Suitable for embedded and constrained environments
+
 #![no_std]
 
 mod arc;
@@ -24,6 +87,10 @@ use core::f32;
 use either::Either;
 use glam::Vec2;
 
+/// Global epsilon value for floating-point comparisons.
+///
+/// This constant (`1e-8`) is used throughout the library for tolerance-based
+/// comparisons to handle numerical instability in geometric computations.
 pub const EPS: f32 = 1e-8;
 
 /// Shape that has an (oriented) edge.
