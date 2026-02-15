@@ -162,9 +162,6 @@ let square = Polygon::new([
     Vec2::new(0.0, 1.0),
 ]);
 
-// Check orientation (should be CCW)
-let orientation = square.orientation(); // 1
-
 // Iterate over edges
 for edge in square.edges() {
     // Process each edge

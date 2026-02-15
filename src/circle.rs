@@ -45,15 +45,7 @@ pub struct Disk(pub Circle);
 
 impl Disk {
     /// Create a new disk with the given center and radius.
-    ///
-    /// # Panics
-    /// In debug builds, panics if `radius` is negative.
     pub fn new(center: Vec2, radius: f32) -> Self {
-        debug_assert!(
-            radius >= 0.0,
-            "Disk radius must be non-negative, got {}",
-            radius
-        );
         Disk(Circle { center, radius })
     }
 
