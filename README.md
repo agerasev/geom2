@@ -5,6 +5,7 @@ A Rust library for 2D geometry primitives and operations with `no_std` support.
 [![Crates.io](https://img.shields.io/crates/v/geom2)](https://crates.io/crates/geom2)
 [![Documentation](https://docs.rs/geom2/badge.svg)](https://docs.rs/geom2)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/agerasev/geom2/actions/workflows/ci.yml/badge.svg)](https://github.com/agerasev/geom2/actions/workflows/ci.yml)
 
 ## Overview
 
