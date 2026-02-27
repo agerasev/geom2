@@ -1,5 +1,5 @@
 use crate::{
-    ArcVertex, AsIterator, Circle, Closed, Disk, DiskSegment, EPS, GenericPolygon, Integrable,
+    ArcVertex, Circle, Closed, CopyIterator, Disk, DiskSegment, EPS, GenericPolygon, Integrable,
     Intersect, IntersectTo, Line, LineSegment, Moment, Polygon,
 };
 use core::{array::from_fn, f32::consts::PI};
@@ -8,9 +8,9 @@ use glam::Vec2;
 
 pub type ArcPolygon<V> = GenericPolygon<V, ArcVertex>;
 
-impl<V: AsIterator<Item = ArcVertex> + ?Sized> ArcPolygon<V> {
-    pub fn frame(&self) -> Polygon<impl AsIterator<Item = Vec2>> {
-        Polygon::new(self.vertices.map(&|arc| &arc.point))
+impl<V: CopyIterator<Item = ArcVertex> + ?Sized> ArcPolygon<V> {
+    pub fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2>> {
+        Polygon::new(self.vertices.map(|arc| arc.point))
     }
 }
 impl<const N: usize> ArcPolygon<[ArcVertex; N]> {
@@ -22,7 +22,7 @@ impl<const N: usize> ArcPolygon<[ArcVertex; N]> {
     }
 }
 
-impl<V: AsIterator<Item = ArcVertex> + ?Sized> Closed for ArcPolygon<V> {
+impl<V: CopyIterator<Item = ArcVertex> + ?Sized> Closed for ArcPolygon<V> {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         let mut winding_number = self.frame().winding_number_2(point);
 
@@ -34,7 +34,7 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> Closed for ArcPolygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = ArcVertex> + ?Sized> Integrable for ArcPolygon<V> {
+impl<V: CopyIterator<Item = ArcVertex> + ?Sized> Integrable for ArcPolygon<V> {
     fn moment(&self) -> Moment {
         let mut moment = self.frame().moment();
 
@@ -46,8 +46,10 @@ impl<V: AsIterator<Item = ArcVertex> + ?Sized> Integrable for ArcPolygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + FromIterator<ArcVertex>>
-    IntersectTo<Disk, ArcPolygon<W>> for Polygon<V>
+impl<
+    V: CopyIterator<Item = Vec2> + ?Sized,
+    W: CopyIterator<Item = ArcVertex> + FromIterator<ArcVertex>,
+> IntersectTo<Disk, ArcPolygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, disk: &Disk) -> Option<ArcPolygon<W>> {
         // Clip vertices
@@ -148,8 +150,10 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + From
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = ArcVertex> + FromIterator<ArcVertex>>
-    IntersectTo<Polygon<V>, ArcPolygon<W>> for Disk
+impl<
+    V: CopyIterator<Item = Vec2> + ?Sized,
+    W: CopyIterator<Item = ArcVertex> + FromIterator<ArcVertex>,
+> IntersectTo<Polygon<V>, ArcPolygon<W>> for Disk
 {
     fn intersect_to(&self, other: &Polygon<V>) -> Option<ArcPolygon<W>> {
         other.intersect_to(self)

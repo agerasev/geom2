@@ -1,10 +1,9 @@
 pub mod circle;
 pub mod line;
 
-use crate::{AsIterator, Edge, Vertex};
+use crate::{CopyIterator, Edge, Vertex};
 use core::{
     fmt::{self, Debug, Formatter},
-    iter::Copied,
     marker::PhantomData,
 };
 
@@ -25,13 +24,13 @@ use core::{
 ///
 /// Vertices are connected in order: v0 -> v1 -> v2 -> v3 -> v4 -> v5 -> v0.
 #[derive(Clone, Copy)]
-pub struct GenericPolygon<V: AsIterator<Item = T> + ?Sized, T: Vertex> {
+pub struct GenericPolygon<V: CopyIterator<Item = T> + ?Sized, T: Vertex> {
     _ghost: PhantomData<T>,
     /// The vertices of the polygon.
     pub vertices: V,
 }
 
-impl<T: Vertex, V: AsIterator<Item = T>> GenericPolygon<V, T> {
+impl<T: Vertex, V: CopyIterator<Item = T>> GenericPolygon<V, T> {
     /// Create a new polygon from a sequence of vertices.
     pub fn new(vertices: V) -> Self {
         Self {
@@ -41,7 +40,7 @@ impl<T: Vertex, V: AsIterator<Item = T>> GenericPolygon<V, T> {
     }
 }
 
-impl<T: Vertex, V: AsIterator<Item = T> + FromIterator<T>> FromIterator<T>
+impl<T: Vertex, V: CopyIterator<Item = T> + FromIterator<T>> FromIterator<T>
     for GenericPolygon<V, T>
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
@@ -49,7 +48,7 @@ impl<T: Vertex, V: AsIterator<Item = T> + FromIterator<T>> FromIterator<T>
     }
 }
 
-impl<T: Vertex + PartialEq, U: AsIterator<Item = T> + ?Sized, V: AsIterator<Item = T> + ?Sized>
+impl<T: Vertex + PartialEq, U: CopyIterator<Item = T> + ?Sized, V: CopyIterator<Item = T> + ?Sized>
     PartialEq<GenericPolygon<U, T>> for GenericPolygon<V, T>
 {
     fn eq(&self, other: &GenericPolygon<U, T>) -> bool {
@@ -57,10 +56,10 @@ impl<T: Vertex + PartialEq, U: AsIterator<Item = T> + ?Sized, V: AsIterator<Item
     }
 }
 
-impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> GenericPolygon<V, T> {
+impl<T: Vertex, V: CopyIterator<Item = T> + ?Sized> GenericPolygon<V, T> {
     /// Get an iterator over the vertices of the polygon.
-    pub fn vertices(&self) -> Copied<V::RefIter<'_>> {
-        self.vertices.iter().copied()
+    pub fn vertices(&self) -> V::CopyIter<'_> {
+        self.vertices.iter_copied()
     }
 
     /// Check if the polygon has no vertices.
@@ -91,9 +90,9 @@ impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> GenericPolygon<V, T> {
     }
 }
 
-impl<T: Vertex, V: AsIterator<Item = T> + ?Sized> GenericPolygon<V, T>
+impl<T: Vertex, V: CopyIterator<Item = T> + ?Sized> GenericPolygon<V, T>
 where
-    for<'a> V::RefIter<'a>: ExactSizeIterator,
+    for<'a> V::CopyIter<'a>: ExactSizeIterator,
 {
     /// Get the number of vertices in the polygon.
     pub fn len(&self) -> usize {
@@ -101,7 +100,7 @@ where
     }
 }
 
-impl<T: Vertex, V: AsIterator<Item = T> + Debug + ?Sized> Debug for GenericPolygon<V, T> {
+impl<T: Vertex, V: CopyIterator<Item = T> + Debug + ?Sized> Debug for GenericPolygon<V, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "Polygon {{ vertices: {:?} }}", &self.vertices)
     }

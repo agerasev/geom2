@@ -1,4 +1,7 @@
-use core::{iter::Map, marker::PhantomData};
+use core::{
+    iter::{Copied, Map},
+    marker::PhantomData,
+};
 use glam::Vec2;
 
 /// Trait for edges of a polygon.
@@ -19,16 +22,23 @@ pub trait Vertex: Copy {
     fn pos(&self) -> Vec2;
 }
 
-pub trait AsIterator {
-    type Item;
-    type RefIter<'a>: Iterator<Item = &'a Self::Item>
+pub trait CopyIterator {
+    type Item: Copy;
+    type CopyIter<'a>: Iterator<Item = Self::Item> + 'a
     where
-        Self: 'a;
+        Self: 'a,
+        Self::Item: 'a;
 
-    fn iter(&self) -> Self::RefIter<'_>;
+    fn iter_copied<'a>(&'a self) -> Self::CopyIter<'a>
+    where
+        Self::Item: 'a;
 
-    fn map<'a, U, F: Fn(&Self::Item) -> &U>(&'a self, f: &'a F) -> AsMap<'a, U, Self, F> {
-        AsMap {
+    fn map<'a, U, F: Fn(Self::Item) -> U>(&'a self, f: F) -> CopyMap<'a, U, Self, F>
+    where
+        Self::Item: 'a,
+        U: 'a,
+    {
+        CopyMap {
             iter: self,
             f,
             _ghost: PhantomData,
@@ -36,35 +46,45 @@ pub trait AsIterator {
     }
 }
 
-impl<T, I: ?Sized> AsIterator for I
+impl<T: Copy, I: ?Sized> CopyIterator for I
 where
     for<'a> &'a I: IntoIterator<Item = &'a T>,
 {
     type Item = T;
-    type RefIter<'a>
-        = <&'a I as IntoIterator>::IntoIter
+    type CopyIter<'a>
+        = Copied<<&'a I as IntoIterator>::IntoIter>
     where
-        Self: 'a;
+        Self: 'a,
+        Self::Item: 'a;
 
-    fn iter(&self) -> Self::RefIter<'_> {
-        self.into_iter()
+    fn iter_copied<'a>(&'a self) -> Self::CopyIter<'a>
+    where
+        Self::Item: 'a,
+    {
+        self.into_iter().copied()
     }
 }
 
-pub struct AsMap<'a, U, I: AsIterator + ?Sized, F: Fn(&I::Item) -> &U> {
+pub struct CopyMap<'a, U, I: CopyIterator + ?Sized, F: Fn(I::Item) -> U> {
     iter: &'a I,
-    f: &'a F,
+    f: F,
     _ghost: PhantomData<U>,
 }
 
-impl<'b, U, I: AsIterator + ?Sized, F: Fn(&I::Item) -> &U> AsIterator for AsMap<'b, U, I, F> {
+impl<'b, U: Copy, I: CopyIterator + ?Sized, F: Fn(I::Item) -> U> CopyIterator
+    for CopyMap<'b, U, I, F>
+{
     type Item = U;
-    type RefIter<'a>
-        = Map<I::RefIter<'a>, &'a F>
+    type CopyIter<'a>
+        = Map<I::CopyIter<'a>, &'a F>
     where
-        Self: 'a;
+        Self: 'a,
+        Self::Item: 'a;
 
-    fn iter(&self) -> Self::RefIter<'_> {
-        self.iter.iter().map(self.f)
+    fn iter_copied<'a>(&'a self) -> Self::CopyIter<'a>
+    where
+        Self::Item: 'a,
+    {
+        self.iter.iter_copied().map(&self.f)
     }
 }

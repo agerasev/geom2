@@ -1,13 +1,13 @@
 use crate::{
-    AsIterator, Closed, EPS, GenericPolygon, HalfPlane, Integrable, IntersectTo, Line, LineSegment,
-    Moment,
+    Closed, CopyIterator, EPS, GenericPolygon, HalfPlane, Integrable, IntersectTo, Line,
+    LineSegment, Moment,
 };
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
 
 pub type Polygon<V> = GenericPolygon<V, Vec2>;
 
-impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
+impl<V: CopyIterator<Item = Vec2> + ?Sized> Polygon<V> {
     pub fn is_convex(&self) -> bool {
         let mut sign = 0.0;
         for [a, b, c] in self.vertices_window() {
@@ -23,7 +23,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized> Closed for Polygon<V> {
+impl<V: CopyIterator<Item = Vec2> + ?Sized> Closed for Polygon<V> {
     fn winding_number_2(&self, point: Vec2) -> i32 {
         let mut winding_number = 0;
 
@@ -48,7 +48,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Closed for Polygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized> Integrable for Polygon<V> {
+impl<V: CopyIterator<Item = Vec2> + ?Sized> Integrable for Polygon<V> {
     fn moment(&self) -> Moment {
         // Shoelace formula
         let mut area = 0.0;
@@ -68,7 +68,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized> Integrable for Polygon<V> {
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromIterator<Vec2>>
+impl<V: CopyIterator<Item = Vec2> + ?Sized, W: CopyIterator<Item = Vec2> + FromIterator<Vec2>>
     IntersectTo<HalfPlane, Polygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
@@ -137,7 +137,7 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
     }
 }
 
-impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromIterator<Vec2>>
+impl<V: CopyIterator<Item = Vec2> + ?Sized, W: CopyIterator<Item = Vec2> + FromIterator<Vec2>>
     IntersectTo<Polygon<V>, Polygon<W>> for HalfPlane
 {
     fn intersect_to(&self, other: &Polygon<V>) -> Option<Polygon<W>> {
@@ -146,9 +146,9 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
 }
 
 impl<
-    U: AsIterator<Item = Vec2> + ?Sized,
-    V: AsIterator<Item = Vec2> + ?Sized,
-    W: AsIterator<Item = Vec2> + FromIterator<Vec2>,
+    U: CopyIterator<Item = Vec2> + ?Sized,
+    V: CopyIterator<Item = Vec2> + ?Sized,
+    W: CopyIterator<Item = Vec2> + FromIterator<Vec2>,
 > IntersectTo<Polygon<U>, Polygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, other: &Polygon<U>) -> Option<Polygon<W>> {

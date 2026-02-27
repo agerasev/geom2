@@ -81,7 +81,7 @@ pub use self::{
     line::{Line, LineSegment},
     plane::HalfPlane,
     polygon::{GenericPolygon, circle::ArcPolygon, line::Polygon},
-    vertex::{AsIterator, AsMap, Edge, Vertex},
+    vertex::{CopyIterator, CopyMap, Edge, Vertex},
 };
 
 use core::f32;
