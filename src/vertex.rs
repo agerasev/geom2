@@ -1,6 +1,23 @@
-pub mod approx;
-
 use core::{iter::Map, marker::PhantomData};
+use glam::Vec2;
+
+/// Trait for edges of a polygon.
+pub trait Edge: Copy {
+    /// The vertex type for this edge.
+    type Vertex: Vertex<Edge = Self>;
+
+    /// Create an edge from two vertices.
+    fn from_vertices(a: &Self::Vertex, b: &Self::Vertex) -> Self;
+}
+
+/// Trait for vertices of a polygon.
+pub trait Vertex: Copy {
+    /// The edge type for this vertex.
+    type Edge: Edge<Vertex = Self>;
+
+    /// Get coordinates of the vertex.
+    fn pos(&self) -> Vec2;
+}
 
 pub trait AsIterator {
     type Item;

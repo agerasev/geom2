@@ -1,6 +1,6 @@
 use crate::{
     Arc, ArcPolygon, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line,
-    LineSegment, Moment, Polygon, impl_approx_eq,
+    LineSegment, Moment, impl_approx_eq,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -205,7 +205,7 @@ impl Intersect<Disk> for HalfPlane {
 }
 
 impl Intersect<Disk> for Disk {
-    type Output = Either<Polygon<[ArcVertex; 2], ArcVertex>, Disk>;
+    type Output = Either<ArcPolygon<[ArcVertex; 2]>, Disk>;
     fn intersect(&self, other: &Disk) -> Option<Self::Output> {
         // Vector pointing from `self.center` to `other.center`
         let rel_pos = other.center - self.center;
@@ -225,7 +225,7 @@ impl Intersect<Disk> for Disk {
                 // Midpoint of the common chord
                 let m = self.center + dir * self_apothem;
 
-                Some(Either::Left(Polygon::new([
+                Some(Either::Left(ArcPolygon::new([
                     ArcVertex {
                         point: m - dir.perp() * h,
                         sagitta: self.radius - self_apothem,

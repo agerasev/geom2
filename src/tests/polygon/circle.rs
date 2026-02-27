@@ -1,6 +1,6 @@
 extern crate std;
 
-use crate::{ArcPolygon, ArcVertex, Circle, Integrable, IntersectTo, Polygon};
+use crate::{ArcPolygon, ArcVertex, Circle, Integrable, IntersectTo, GenericPolygon};
 use approx::assert_abs_diff_eq;
 use core::f32::consts::PI;
 use glam::Vec2;
@@ -71,7 +71,7 @@ fn intersect_circle_inside_polygon() {
     .fill();
     let Circle { center, radius } = disk.edge();
 
-    let poly = Polygon::new([
+    let poly = GenericPolygon::new([
         center + (2.0 * radius + TEST_EPS) * Vec2::from_angle(0.0),
         center + (2.0 * radius + TEST_EPS) * Vec2::from_angle(2.0 * PI / 3.0),
         center + (2.0 * radius + TEST_EPS) * Vec2::from_angle(4.0 * PI / 3.0),
@@ -91,7 +91,7 @@ fn intersect_circle_outside_polygon() {
     .fill();
     let Circle { center, radius } = disk.edge();
 
-    let poly = Polygon::new([
+    let poly = GenericPolygon::new([
         center + (radius - TEST_EPS) * Vec2::from_angle(0.0),
         center + (radius - TEST_EPS) * Vec2::from_angle(2.0 * PI / 3.0),
         center + (radius - TEST_EPS) * Vec2::from_angle(4.0 * PI / 3.0),
@@ -110,7 +110,7 @@ fn intersect_circle_polygon_sector() {
     }
     .fill();
 
-    let poly = Polygon::new([
+    let poly = GenericPolygon::new([
         Vec2::new(0.0, 0.0),
         Vec2::new(2.0, 0.0),
         Vec2::new(2.0, 2.0),
@@ -130,7 +130,7 @@ fn intersect_circle_polygon_stripe() {
     }
     .fill();
 
-    let poly = Polygon::new([
+    let poly = GenericPolygon::new([
         Vec2::new(-2.0, -0.5),
         Vec2::new(2.0, -0.5),
         Vec2::new(2.0, 0.5),

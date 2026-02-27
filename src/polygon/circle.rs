@@ -1,15 +1,15 @@
 use crate::{
-    ArcVertex, AsIterator, Circle, Closed, Disk, DiskSegment, EPS, Integrable, Intersect,
-    IntersectTo, Line, LineSegment, Moment, Polygon,
+    ArcVertex, AsIterator, Circle, Closed, Disk, DiskSegment, EPS, GenericPolygon, Integrable,
+    Intersect, IntersectTo, Line, LineSegment, Moment, Polygon,
 };
 use core::{array::from_fn, f32::consts::PI};
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
 
-pub type ArcPolygon<V> = Polygon<V, ArcVertex>;
+pub type ArcPolygon<V> = GenericPolygon<V, ArcVertex>;
 
 impl<V: AsIterator<Item = ArcVertex> + ?Sized> ArcPolygon<V> {
-    pub fn frame(&self) -> Polygon<impl AsIterator<Item = Vec2>, Vec2> {
+    pub fn frame(&self) -> Polygon<impl AsIterator<Item = Vec2>> {
         Polygon::new(self.vertices.map(&|arc| &arc.point))
     }
 }

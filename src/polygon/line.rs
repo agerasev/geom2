@@ -1,8 +1,11 @@
 use crate::{
-    AsIterator, Closed, EPS, HalfPlane, Integrable, IntersectTo, Line, LineSegment, Moment, Polygon,
+    AsIterator, Closed, EPS, GenericPolygon, HalfPlane, Integrable, IntersectTo, Line, LineSegment,
+    Moment,
 };
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
+
+pub type Polygon<V> = GenericPolygon<V, Vec2>;
 
 impl<V: AsIterator<Item = Vec2> + ?Sized> Polygon<V> {
     pub fn is_convex(&self) -> bool {

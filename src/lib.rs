@@ -66,21 +66,22 @@
 mod arc;
 mod circle;
 mod line;
+mod macros;
 mod plane;
 mod polygon;
-mod util;
+mod vertex;
 
 #[cfg(test)]
 mod tests;
 
-pub(crate) use self::util::approx::impl_approx_eq;
+pub(crate) use self::macros::impl_approx_eq;
 pub use self::{
     arc::{Arc, ArcVertex, DiskSegment},
     circle::{Circle, Disk},
     line::{Line, LineSegment},
     plane::HalfPlane,
-    polygon::{Edge, Polygon, Vertex, circle::ArcPolygon},
-    util::{AsIterator, AsMap},
+    polygon::{GenericPolygon, circle::ArcPolygon, line::Polygon},
+    vertex::{AsIterator, AsMap, Edge, Vertex},
 };
 
 use core::f32;
