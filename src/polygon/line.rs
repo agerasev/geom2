@@ -76,23 +76,41 @@ impl<V: AsIterator<Item = Vec2> + ?Sized, W: AsIterator<Item = Vec2> + FromItera
                 Some(x) => x,
                 None => return,
             };
-            let mut prev_inside = plane.contains(prev);
+            let mut prev_dist = plane.distance(prev);
             for v in iter.chain([prev]) {
-                let inside = plane.contains(v);
-                match (prev_inside, inside) {
-                    (true, true) => {
+                let dist = plane.distance(v);
+                if prev_dist < 0.0 {
+                    // prev inside
+                    if dist < 0.0 {
+                        // v inside
                         yield_!(prev);
-                    }
-                    (true, false) => {
+                    } else {
+                        // v outside
                         yield_!(prev);
-                        yield_!(plane.edge().intersect_to(&Line(prev, v)).unwrap_or(v));
+
+                        let sum_dist = dist - prev_dist;
+                        yield_!(if sum_dist < EPS {
+                            0.5 * (prev + v)
+                        } else {
+                            (prev * dist - v * prev_dist) / sum_dist
+                        });
                     }
-                    (false, true) => {
-                        yield_!(plane.edge().intersect_to(&Line(prev, v)).unwrap_or(prev));
+                } else {
+                    // prev outside
+                    if dist < 0.0 {
+                        // v inside
+                        let sum_dist = prev_dist - dist;
+                        yield_!(if sum_dist < EPS {
+                            0.5 * (prev + v)
+                        } else {
+                            (v * prev_dist - prev * dist) / sum_dist
+                        });
+                    } else {
+                        // v outside
+                        // do nothing
                     }
-                    (false, false) => {}
-                };
-                prev_inside = inside;
+                }
+                prev_dist = dist;
                 prev = v;
             }
         });

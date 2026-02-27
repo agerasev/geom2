@@ -49,15 +49,21 @@ impl Disk {
         Disk(Circle { center, radius })
     }
 
+    /// Distance to the disk.
+    ///
+    /// The distance is positive if `v` is outside the disk.
+    pub fn distance(&self, v: f32) -> f32 {
+        (v - self.center).length_squared() - self.radius
+    }
+
     /// Get the boundary circle of this disk.
     pub fn edge(&self) -> Circle {
         self.0
     }
 
-    /// Approximate the disk as a polygon with `N` vertices.
+    /// Approximate the disk as a circular-arc-polygon with `N` vertices.
     ///
-    /// Returns an `ArcPolygon` where each edge is a circular arc
-    /// approximating a segment of the circle.
+    /// Returns an `ArcPolygon` where each edge is a segment of the circle.
     pub fn polygon<const N: usize>(&self) -> ArcPolygon<[ArcVertex; N]> {
         ArcPolygon::<[ArcVertex; N]>::from_circle(self.edge())
     }
@@ -105,25 +111,19 @@ impl Intersect<Line> for Circle {
         if line.is_degenerate() {
             return None;
         }
-        let plane = HalfPlane::from_edge(*line);
-        match self.intersect(&plane)? {
-            Either::Left(arc) => {
-                // The arc points are ordered relative to the half-plane normal.
-                // Reverse them to match the line direction.
-                Some([arc.points.1, arc.points.0])
-            }
-            Either::Right(circle) => {
-                if plane.distance(circle.center) > -circle.radius {
-                    // Tangent line
-                    let point = circle.center
-                        + (plane.boundary_point() - circle.center)
-                            .project_onto_normalized(plane.normal);
-                    Some([point, point])
-                } else {
-                    None
-                }
-            }
+
+        let dir = (line.1 - line.0).normalize();
+        let apothem = (self.center - line.0).perp_dot(dir);
+        if !((-self.radius)..=self.radius).contains(&apothem) {
+            return None;
         }
+
+        // Half length of the chord
+        let half_chord = (self.radius.powi(2) - apothem.powi(2)).sqrt();
+        // Midpoint of the chord
+        let midpoint = self.center + apothem * dir.perp();
+
+        Some([midpoint - dir * half_chord, midpoint + dir * half_chord])
     }
 }
 
