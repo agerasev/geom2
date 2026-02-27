@@ -1,11 +1,17 @@
 use crate::{
-    Closed, CopyIterator, EPS, GenericPolygon, HalfPlane, Integrable, IntersectTo, Line,
-    LineSegment, Moment,
+    Closed, CopyIterator, EPS, FramedPolygon, GenericPolygon, HalfPlane, Integrable, IntersectTo,
+    Line, LineSegment, Moment,
 };
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
 
 pub type Polygon<V> = GenericPolygon<V, Vec2>;
+
+impl<V: CopyIterator<Item = Vec2> + ?Sized> FramedPolygon for Polygon<V> {
+    fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
+        Polygon::new(self.vertices.to_ref())
+    }
+}
 
 impl<V: CopyIterator<Item = Vec2> + ?Sized> Polygon<V> {
     pub fn is_convex(&self) -> bool {

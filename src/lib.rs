@@ -80,8 +80,8 @@ pub use self::{
     circle::{Circle, Disk},
     line::{Line, LineSegment},
     plane::HalfPlane,
-    polygon::{GenericPolygon, circle::ArcPolygon, line::Polygon},
-    vertex::{CopyIterator, CopyMap, Edge, Vertex},
+    polygon::{FramedPolygon, GenericPolygon, circle::ArcPolygon, line::Polygon},
+    vertex::{CopyIterator, CopyMap, CopyRef, Edge, Vertex},
 };
 
 use core::f32;

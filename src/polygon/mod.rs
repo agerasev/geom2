@@ -1,11 +1,12 @@
 pub mod circle;
 pub mod line;
 
-use crate::{CopyIterator, Edge, Vertex};
+use crate::{CopyIterator, EPS, Edge, Integrable, Polygon, Vertex};
 use core::{
     fmt::{self, Debug, Formatter},
     marker::PhantomData,
 };
+use glam::Vec2;
 
 /// A polygon defined by a sequence of vertices.
 ///
@@ -97,6 +98,27 @@ where
     /// Get the number of vertices in the polygon.
     pub fn len(&self) -> usize {
         self.vertices().len()
+    }
+}
+
+pub trait FramedPolygon {
+    fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_>;
+
+    /// Determine the orientation of the polygon.
+    ///
+    /// Returns:
+    /// - `1` if the polygon is counterclockwise (CCW)
+    /// - `-1` if the polygon is clockwise (CW)
+    /// - `0` if the polygon is degenerate (area ≈ 0)
+    fn orientation(&self) -> i32 {
+        let area = self.frame().area();
+        if area.abs() < EPS {
+            0
+        } else if area > 0.0 {
+            1
+        } else {
+            -1
+        }
     }
 }
 

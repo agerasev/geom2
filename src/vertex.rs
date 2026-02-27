@@ -1,7 +1,4 @@
-use core::{
-    iter::{Copied, Map},
-    marker::PhantomData,
-};
+use core::iter::{Copied, Map};
 use glam::Vec2;
 
 /// Trait for edges of a polygon.
@@ -33,16 +30,19 @@ pub trait CopyIterator {
     where
         Self::Item: 'a;
 
-    fn map<'a, U, F: Fn(Self::Item) -> U>(&'a self, f: F) -> CopyMap<'a, U, Self, F>
+    fn to_ref<'a>(&'a self) -> CopyRef<'a, Self>
+    where
+        Self::Item: 'a,
+    {
+        CopyRef(self)
+    }
+
+    fn map<'a, U, F: Fn(Self::Item) -> U>(&'a self, f: F) -> CopyMap<'a, Self, F>
     where
         Self::Item: 'a,
         U: 'a,
     {
-        CopyMap {
-            iter: self,
-            f,
-            _ghost: PhantomData,
-        }
+        CopyMap { iter: self, f }
     }
 }
 
@@ -65,14 +65,31 @@ where
     }
 }
 
-pub struct CopyMap<'a, U, I: CopyIterator + ?Sized, F: Fn(I::Item) -> U> {
+pub struct CopyRef<'a, I: ?Sized>(pub &'a I);
+
+impl<I: CopyIterator + ?Sized> CopyIterator for CopyRef<'_, I> {
+    type Item = I::Item;
+    type CopyIter<'a>
+        = I::CopyIter<'a>
+    where
+        Self: 'a,
+        Self::Item: 'a;
+
+    fn iter_copied<'a>(&'a self) -> Self::CopyIter<'a>
+    where
+        Self::Item: 'a,
+    {
+        self.0.iter_copied()
+    }
+}
+
+pub struct CopyMap<'a, I: ?Sized, F> {
     iter: &'a I,
     f: F,
-    _ghost: PhantomData<U>,
 }
 
 impl<'b, U: Copy, I: CopyIterator + ?Sized, F: Fn(I::Item) -> U> CopyIterator
-    for CopyMap<'b, U, I, F>
+    for CopyMap<'b, I, F>
 {
     type Item = U;
     type CopyIter<'a>

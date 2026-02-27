@@ -1,6 +1,6 @@
 use crate::{
-    ArcVertex, Circle, Closed, CopyIterator, Disk, DiskSegment, EPS, GenericPolygon, Integrable,
-    Intersect, IntersectTo, Line, LineSegment, Moment, Polygon,
+    ArcVertex, Circle, Closed, CopyIterator, Disk, DiskSegment, EPS, FramedPolygon, GenericPolygon,
+    Integrable, Intersect, IntersectTo, Line, LineSegment, Moment, Polygon,
 };
 use core::{array::from_fn, f32::consts::PI};
 use genawaiter::{stack::let_gen, yield_};
@@ -8,11 +8,12 @@ use glam::Vec2;
 
 pub type ArcPolygon<V> = GenericPolygon<V, ArcVertex>;
 
-impl<V: CopyIterator<Item = ArcVertex> + ?Sized> ArcPolygon<V> {
-    pub fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2>> {
+impl<V: CopyIterator<Item = ArcVertex> + ?Sized> FramedPolygon for ArcPolygon<V> {
+    fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
         Polygon::new(self.vertices.map(|arc| arc.point))
     }
 }
+
 impl<const N: usize> ArcPolygon<[ArcVertex; N]> {
     pub fn from_circle(Circle { center, radius }: Circle) -> Self {
         Self::new(from_fn(|i| ArcVertex {
