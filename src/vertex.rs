@@ -1,6 +1,8 @@
 use core::iter::{Copied, Map};
 use glam::Vec2;
 
+use crate::Meta;
+
 /// Trait for edges of a polygon.
 pub trait Edge: Copy {
     /// The vertex type for this edge.
@@ -17,6 +19,20 @@ pub trait Vertex: Copy {
 
     /// Get coordinates of the vertex.
     fn pos(&self) -> Vec2;
+}
+
+impl<T: Edge, M: Copy> Edge for Meta<T, M> {
+    type Vertex = Meta<T::Vertex, M>;
+    fn from_vertices(a: &Self::Vertex, b: &Self::Vertex) -> Self {
+        Meta::new(T::from_vertices(&a.inner, &b.inner), a.meta)
+    }
+}
+
+impl<T: Vertex, M: Copy> Vertex for Meta<T, M> {
+    type Edge = Meta<T::Edge, M>;
+    fn pos(&self) -> Vec2 {
+        self.inner.pos()
+    }
 }
 
 pub trait CopyIterator {

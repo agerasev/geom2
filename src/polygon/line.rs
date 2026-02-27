@@ -1,6 +1,6 @@
 use crate::{
-    Closed, CopyIterator, EPS, FramedPolygon, GenericPolygon, HalfPlane, Integrable, IntersectTo,
-    Line, LineSegment, Moment,
+    Closed, CopyIterator, EPS, GenericPolygon, HalfPlane, Integrable, IntersectTo, Line,
+    LineSegment, Meta, Moment, meta::Unmeta, polygon::FramedPolygon,
 };
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
@@ -78,68 +78,10 @@ impl<V: CopyIterator<Item = Vec2> + ?Sized, W: CopyIterator<Item = Vec2> + FromI
     IntersectTo<HalfPlane, Polygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
-        // Clip vertices
-        let_gen!(gen_, {
-            let mut iter = self.vertices();
-            let mut prev = match iter.next() {
-                Some(x) => x,
-                None => return,
-            };
-            let mut prev_dist = plane.distance(prev);
-            for v in iter.chain([prev]) {
-                let dist = plane.distance(v);
-                if prev_dist < 0.0 {
-                    // prev inside
-                    if dist < 0.0 {
-                        // v inside
-                        yield_!(prev);
-                    } else {
-                        // v outside
-                        yield_!(prev);
-
-                        let sum_dist = dist - prev_dist;
-                        yield_!(if sum_dist < EPS {
-                            0.5 * (prev + v)
-                        } else {
-                            (prev * dist - v * prev_dist) / sum_dist
-                        });
-                    }
-                } else {
-                    // prev outside
-                    if dist < 0.0 {
-                        // v inside
-                        let sum_dist = prev_dist - dist;
-                        yield_!(if sum_dist < EPS {
-                            0.5 * (prev + v)
-                        } else {
-                            (v * prev_dist - prev * dist) / sum_dist
-                        });
-                    } else {
-                        // v outside
-                        // do nothing
-                    }
-                }
-                prev_dist = dist;
-                prev = v;
-            }
-        });
-        let mut iter = gen_.into_iter();
-
-        if let Some(mut prev) = iter.next() {
-            // Deduplicate vertices
-            let iter = iter.chain([prev]).filter_map(|v| {
-                let ret = if (prev - v).abs().max_element() > EPS {
-                    Some(prev)
-                } else {
-                    None
-                };
-                prev = v;
-                ret
-            });
-            Some(Polygon::<W>::from_iter(iter))
-        } else {
-            None
-        }
+        let unmeta: GenericPolygon<Unmeta<W>, Meta<Vec2, ()>> =
+            Meta::new(Polygon::new(self.vertices.to_ref()), ())
+                .intersect_to(&Meta::new(*plane, ()))?;
+        Some(Polygon::new(unmeta.vertices.0))
     }
 }
 
@@ -147,6 +89,125 @@ impl<V: CopyIterator<Item = Vec2> + ?Sized, W: CopyIterator<Item = Vec2> + FromI
     IntersectTo<Polygon<V>, Polygon<W>> for HalfPlane
 {
     fn intersect_to(&self, other: &Polygon<V>) -> Option<Polygon<W>> {
+        other.intersect_to(self)
+    }
+}
+
+impl<
+    M: Copy,
+    V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized,
+    W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
+> IntersectTo<Meta<HalfPlane, M>, GenericPolygon<W, Meta<Vec2, M>>>
+    for GenericPolygon<V, Meta<Vec2, M>>
+{
+    fn intersect_to(&self, plane: &Meta<HalfPlane, M>) -> Option<GenericPolygon<W, Meta<Vec2, M>>> {
+        // Clip vertices
+        let_gen!(gen_, {
+            let mut iter = self.vertices();
+            let mut prev = match iter.next() {
+                Some(x) => x,
+                None => return,
+            };
+            let mut prev_dist = plane.distance(*prev);
+            for curr in iter.chain([prev]) {
+                let dist = plane.distance(*curr);
+                if prev_dist < 0.0 {
+                    // prev inside
+                    if dist < 0.0 {
+                        // curr inside
+                        yield_!(prev);
+                    } else {
+                        // curr outside
+                        yield_!(prev);
+
+                        let sum_dist = dist - prev_dist;
+                        yield_!(Meta::new(
+                            if sum_dist < EPS {
+                                0.5 * (*prev + *curr)
+                            } else {
+                                (*prev * dist - *curr * prev_dist) / sum_dist
+                            },
+                            plane.meta
+                        ));
+                    }
+                } else {
+                    // prev outside
+                    if dist < 0.0 {
+                        // curr inside
+                        let sum_dist = prev_dist - dist;
+                        yield_!(Meta::new(
+                            if sum_dist < EPS {
+                                0.5 * (*prev + *curr)
+                            } else {
+                                (*curr * prev_dist - *prev * dist) / sum_dist
+                            },
+                            prev.meta
+                        ));
+                    } else {
+                        // curr outside
+                        // do nothing
+                    }
+                }
+                prev_dist = dist;
+                prev = curr;
+            }
+        });
+        let mut iter = gen_.into_iter();
+
+        if let Some(mut prev) = iter.next() {
+            // Deduplicate vertices
+            let iter = iter.chain([prev]).filter_map(|curr| {
+                let ret = if (*prev - *curr).abs().max_element() > EPS {
+                    Some(curr)
+                } else {
+                    None
+                };
+                prev = curr;
+                ret
+            });
+            Some(GenericPolygon::<W, Meta<Vec2, M>>::from_iter(iter))
+        } else {
+            None
+        }
+    }
+}
+
+impl<
+    M: Copy,
+    V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized,
+    W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
+> IntersectTo<GenericPolygon<V, Meta<Vec2, M>>, GenericPolygon<W, Meta<Vec2, M>>>
+    for Meta<HalfPlane, M>
+{
+    fn intersect_to(
+        &self,
+        other: &GenericPolygon<V, Meta<Vec2, M>>,
+    ) -> Option<GenericPolygon<W, Meta<Vec2, M>>> {
+        other.intersect_to(self)
+    }
+}
+
+impl<
+    M: Copy,
+    V: CopyIterator<Item = Vec2> + ?Sized,
+    W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
+> IntersectTo<Meta<HalfPlane, M>, GenericPolygon<W, Meta<Vec2, M>>> for Meta<Polygon<V>, M>
+{
+    fn intersect_to(&self, plane: &Meta<HalfPlane, M>) -> Option<GenericPolygon<W, Meta<Vec2, M>>> {
+        GenericPolygon::new(self.vertices.map(|v| Meta::new(v, self.meta))).intersect_to(plane)
+    }
+}
+
+impl<
+    M: Copy,
+    V: CopyIterator<Item = Vec2> + ?Sized,
+    W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
+> IntersectTo<Meta<Polygon<V>, M>, GenericPolygon<W, Meta<Vec2, M>>> for Meta<HalfPlane, M>
+{
+    fn intersect_to(
+        &self,
+        other: &Meta<Polygon<V>, M>,
+    ) -> Option<GenericPolygon<W, Meta<Vec2, M>>> {
         other.intersect_to(self)
     }
 }

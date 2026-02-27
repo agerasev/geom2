@@ -67,6 +67,7 @@ mod arc;
 mod circle;
 mod line;
 mod macros;
+mod meta;
 mod plane;
 mod polygon;
 mod vertex;
@@ -79,6 +80,7 @@ pub use self::{
     arc::{Arc, ArcVertex, DiskSegment},
     circle::{Circle, Disk},
     line::{Line, LineSegment},
+    meta::Meta,
     plane::HalfPlane,
     polygon::{FramedPolygon, GenericPolygon, circle::ArcPolygon, line::Polygon},
     vertex::{CopyIterator, CopyMap, CopyRef, Edge, Vertex},
