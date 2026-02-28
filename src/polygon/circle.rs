@@ -7,7 +7,16 @@ use core::{array::from_fn, f32::consts::PI};
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
 
+/// A polygon with circular arc edges.
+///
+/// This type alias represents a polygon where each edge is a circular arc.
+/// The vertices are of type [`ArcVertex`], which stores both position and sagitta.
 pub type ArcPolygon<V> = GenericPolygon<V, ArcVertex>;
+/// A metadata-wrapped polygon with circular arc edges.
+///
+/// This type alias represents a polygon with arc edges where each vertex
+/// carries metadata of type `M`. The metadata is propagated through
+/// geometric operations.
 pub type MetaArcPolygon<V, M> = GenericPolygon<V, Meta<ArcVertex, M>>;
 
 impl<V: CopyIterator<Item = ArcVertex> + ?Sized> FramedPolygon for ArcPolygon<V> {
@@ -25,6 +34,17 @@ impl<M: Copy, V: CopyIterator<Item = Meta<ArcVertex, M>> + ?Sized> FramedPolygon
 }
 
 impl<const N: usize> ArcPolygon<[ArcVertex; N]> {
+    /// Create a circular arc polygon approximating a circle.
+    ///
+    /// This creates an `ArcPolygon` with `N` vertices that approximates
+    /// the given circle. Each edge is a circular arc segment of the circle.
+    /// The sagitta for each arc is computed to match the circle's curvature.
+    ///
+    /// # Parameters
+    /// - `circle`: The circle to approximate
+    ///
+    /// # Returns
+    /// An `ArcPolygon` with `N` vertices that closely approximates the circle.
     pub fn from_circle(Circle { center, radius }: Circle) -> Self {
         Self::new(from_fn(|i| ArcVertex {
             point: center + radius * Vec2::from_angle(2.0 * PI * i as f32 / N as f32),

@@ -5,13 +5,19 @@ use core::{
 };
 
 /// Wrapper around geometry with an associated metadata.
+///
+/// This struct attaches arbitrary metadata `M` to a geometric shape `T`.
+/// The metadata must be `Copy` and is stored alongside the shape.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct Meta<T: ?Sized, M: Copy> {
+    /// The metadata associated with the geometry.
     pub meta: M,
+    /// The wrapped geometric shape.
     pub inner: T,
 }
 
 impl<T, M: Copy> Meta<T, M> {
+    /// Create a new `Meta` wrapper with the given geometry and metadata.
     pub fn new(inner: T, metadata: M) -> Self {
         Self {
             inner,
@@ -33,6 +39,11 @@ impl<T: ?Sized, M: Copy> DerefMut for Meta<T, M> {
     }
 }
 
+/// A wrapper that removes metadata from geometry.
+///
+/// This struct is used to convert between metadata-wrapped geometry
+/// and plain geometry. It implements [`CopyIterator`] for containers
+/// of metadata-wrapped items, removing the metadata in the process.
 pub struct Unmeta<I: ?Sized>(pub I);
 
 impl<I: CopyIterator + ?Sized> CopyIterator for Unmeta<I> {

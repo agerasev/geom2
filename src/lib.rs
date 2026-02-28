@@ -136,12 +136,27 @@ pub trait Integrable {
 
 /// Intersection of two figures
 pub trait Intersect<T: Intersect<Self, Output = Self::Output> + ?Sized> {
+    /// The type of intersection result.
+    ///
+    /// This is typically a geometric shape representing the intersection
+    /// of two shapes. For example, the intersection of two lines is a `Vec2`
+    /// (point), while the intersection of a circle and a half-plane is
+    /// `Either<Arc, Circle>`.
     type Output: Sized;
+    /// Compute the intersection of two shapes.
+    ///
+    /// Returns `Some(intersection)` if the shapes intersect, or `None` if they don't.
+    /// The intersection result type is specified by the [`Output`](Intersect::Output) associated type.
     fn intersect(&self, other: &T) -> Option<Self::Output>;
 }
 
 /// Intersection of two figures where resulting figure type can be selected.
+///
+/// This trait provides a more flexible intersection operation than [`Intersect`],
+/// allowing you to specify the desired output type `U`. This is useful when
+/// multiple possible intersection result types exist (e.g., `Polygon` with different storages).
 pub trait IntersectTo<T: IntersectTo<Self, U> + ?Sized, U> {
+    /// Compute the intersection with a specific output type.
     fn intersect_to(&self, other: &T) -> Option<U>;
 }
 
@@ -161,6 +176,13 @@ pub struct Moment {
 }
 
 impl Moment {
+    /// Merge two moments into a combined moment.
+    ///
+    /// This is used to combine geometric moments (area and centroid) of adjacent shapes.
+    /// The resulting moment represents the combined shape as if the two original shapes
+    /// were unioned together.
+    ///
+    /// If the combined area is near zero (within [`EPS`]), returns a default moment.
     pub fn merge(self, other: Self) -> Self {
         let area = self.area + other.area;
         if area.abs() < EPS {

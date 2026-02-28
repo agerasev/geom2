@@ -11,7 +11,7 @@ use glam::Vec2;
 /// A polygon defined by a sequence of vertices.
 ///
 /// The polygon can have any vertex type `T` that implements [`Vertex`],
-/// and the vertices can be stored in any container `V` that implements [`AsIterator`].
+/// and the vertices can be stored in any container `V` that implements [`CopyIterator`].
 ///
 /// ```text
 ///     v4 +-----+ v4
@@ -101,7 +101,16 @@ where
     }
 }
 
+/// A polygon that can be converted to a polygonal frame.
+///
+/// This trait is implemented by polygons that can produce a "frame" representation
+/// consisting of straight line segments (as opposed to curved edges).
+/// The frame is useful for operations that require a simple polygon representation.
 pub trait FramedPolygon {
+    /// Convert the polygon to its polygonal frame.
+    ///
+    /// Returns a polygon where all curved edges (e.g., arcs) are approximated
+    /// by their chords (straight line segments between endpoints).
     fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_>;
 
     /// Determine the orientation of the polygon.

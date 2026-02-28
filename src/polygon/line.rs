@@ -5,7 +5,15 @@ use crate::{
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
 
+/// A polygon with straight line segment edges.
+///
+/// This type alias represents a polygon where each edge is a straight line segment.
+/// The vertices are plain `Vec2` points without additional metadata.
 pub type Polygon<V> = GenericPolygon<V, Vec2>;
+/// A metadata-wrapped polygon with straight line segment edges.
+///
+/// This type alias represents a polygon with line segment edges where each vertex
+/// carries metadata of type `M`. The metadata is propagated through geometric operations.
 pub type MetaPolygon<V, M> = GenericPolygon<V, Meta<Vec2, M>>;
 
 impl<V: CopyIterator<Item = Vec2> + ?Sized> FramedPolygon for Polygon<V> {
@@ -21,6 +29,18 @@ impl<M: Copy, V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized> FramedPolygon for 
 }
 
 impl<V: CopyIterator<Item = Vec2> + ?Sized> Polygon<V> {
+    /// Check if the polygon is convex.
+    ///
+    /// A polygon is convex if all interior angles are less than or equal to 180 degrees,
+    /// or equivalently, if the cross product of consecutive edges has the same sign
+    /// (or is zero) for all vertices.
+    ///
+    /// # Returns
+    /// - `true` if the polygon is convex
+    /// - `false` if the polygon is concave or degenerate (has zero area)
+    ///
+    /// # Note
+    /// This method assumes the polygon is simple (non-self-intersecting).
     pub fn is_convex(&self) -> bool {
         let mut sign = 0.0;
         for [a, b, c] in self.vertices_window() {

@@ -24,7 +24,17 @@ use glam::Vec2;
 /// while the negative sagitta — to the left side.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Arc {
+    /// The endpoints of the arc.
+    ///
+    /// The first point is the starting vertex, and the second point is the ending vertex.
+    /// The arc travels from `points.0` to `points.1` along a circular path.
     pub points: (Vec2, Vec2),
+    /// The sagitta (sag) of the arc.
+    ///
+    /// The sagitta is the signed distance from the midpoint of the chord to the midpoint of the arc.
+    /// Positive sagitta indicates the arc curves to the right side of the chord
+    /// (when looking from the first point to the second), while negative sagitta
+    /// indicates curvature to the left side.
     pub sagitta: f32,
 }
 
@@ -38,7 +48,12 @@ impl Arc {
 /// Start point of an [`Arc`] with its sagitta.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct ArcVertex {
+    /// The position of the vertex.
     pub point: Vec2,
+    /// The sagitta associated with this vertex.
+    ///
+    /// When used as part of an arc edge, this sagitta determines the curvature
+    /// of the arc segment starting from this vertex.
     pub sagitta: f32,
 }
 
