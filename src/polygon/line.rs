@@ -24,7 +24,7 @@ impl<V: CopyIterator<Item = Vec2> + ?Sized> FramedPolygon for Polygon<V> {
 
 impl<M: Copy, V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized> FramedPolygon for MetaPolygon<V, M> {
     fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
-        Polygon::new(self.vertices.map(|x| x.inner))
+        self.map_vertices(|x| x.inner)
     }
 }
 
@@ -216,7 +216,8 @@ impl<
 > IntersectTo<Meta<HalfPlane, M>, MetaPolygon<W, M>> for Meta<Polygon<V>, M>
 {
     fn intersect_to(&self, plane: &Meta<HalfPlane, M>) -> Option<MetaPolygon<W, M>> {
-        MetaPolygon::new(self.vertices.map(|v| Meta::new(v, self.meta))).intersect_to(plane)
+        self.map_vertices(|v| Meta::new(v, self.meta))
+            .intersect_to(plane)
     }
 }
 
@@ -277,8 +278,7 @@ impl<
 > IntersectTo<Meta<Polygon<U>, M>, MetaPolygon<W, M>> for Meta<Polygon<V>, M>
 {
     fn intersect_to(&self, other: &Meta<Polygon<U>, M>) -> Option<MetaPolygon<W, M>> {
-        MetaPolygon::new(self.vertices.map(|x| Meta::new(x, self.meta))).intersect_to(
-            &MetaPolygon::new(other.vertices.map(|x| Meta::new(x, other.meta))),
-        )
+        self.map_vertices(|x| Meta::new(x, self.meta))
+            .intersect_to(&other.map_vertices(|x| Meta::new(x, other.meta)))
     }
 }

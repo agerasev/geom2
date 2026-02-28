@@ -21,7 +21,7 @@ pub type MetaArcPolygon<V, M> = GenericPolygon<V, Meta<ArcVertex, M>>;
 
 impl<V: CopyIterator<Item = ArcVertex> + ?Sized> FramedPolygon for ArcPolygon<V> {
     fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
-        Polygon::new(self.vertices.map(|arc| arc.point))
+        self.map_vertices(|arc| arc.point)
     }
 }
 
@@ -29,7 +29,7 @@ impl<M: Copy, V: CopyIterator<Item = Meta<ArcVertex, M>> + ?Sized> FramedPolygon
     for MetaArcPolygon<V, M>
 {
     fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
-        Polygon::new(self.vertices.map(|arc| arc.inner.point))
+        self.map_vertices(|arc| arc.inner.point)
     }
 }
 
@@ -263,7 +263,8 @@ impl<
 > IntersectTo<Meta<Disk, M>, MetaArcPolygon<W, M>> for Meta<Polygon<V>, M>
 {
     fn intersect_to(&self, disk: &Meta<Disk, M>) -> Option<MetaArcPolygon<W, M>> {
-        MetaPolygon::new(self.vertices.map(|x| Meta::new(x, self.meta))).intersect_to(disk)
+        self.map_vertices(|x| Meta::new(x, self.meta))
+            .intersect_to(disk)
     }
 }
 

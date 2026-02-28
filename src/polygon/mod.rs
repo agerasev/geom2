@@ -89,6 +89,13 @@ impl<T: Vertex, V: CopyIterator<Item = T> + ?Sized> GenericPolygon<V, T> {
         self.vertices_window()
             .map(|[a, b]| T::Edge::from_vertices(&a, &b))
     }
+
+    pub fn map_vertices<'a, U: Vertex + 'a, F: Fn(T) -> U + 'a>(
+        &'a self,
+        f: F,
+    ) -> GenericPolygon<impl CopyIterator<Item = U> + 'a, U> {
+        GenericPolygon::new(self.vertices.map(f))
+    }
 }
 
 impl<T: Vertex, V: CopyIterator<Item = T> + ?Sized> GenericPolygon<V, T>

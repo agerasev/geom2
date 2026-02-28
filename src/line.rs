@@ -61,6 +61,17 @@ impl Line {
 }
 
 impl LineSegment {
+    /// Returns the vector pointing from the first point to the second one
+    pub fn vec(&self) -> Vec2 {
+        self.1 - self.0
+    }
+    pub fn center(&self) -> Vec2 {
+        0.5 * (self.0 + self.1)
+    }
+    pub fn normal(&self) -> Vec2 {
+        -self.vec().normalize_or_zero().perp()
+    }
+
     /// Returns the line containing this segment
     pub fn line(&self) -> Line {
         Line(self.0, self.1)
