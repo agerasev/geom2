@@ -1,6 +1,6 @@
 use crate::{
-    Closed, CopyIterator, EPS, GenericPolygon, HalfPlane, Integrable, IntersectTo, Line,
-    LineSegment, Meta, Moment, meta::Unmeta, polygon::FramedPolygon,
+    Closed, CopyIterator, EPS, FramedPolygon, GenericPolygon, HalfPlane, Integrable, IntersectTo,
+    Line, LineSegment, Meta, Moment, Unmeta,
 };
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
@@ -11,6 +11,12 @@ pub type MetaPolygon<V, M> = GenericPolygon<V, Meta<Vec2, M>>;
 impl<V: CopyIterator<Item = Vec2> + ?Sized> FramedPolygon for Polygon<V> {
     fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
         Polygon::new(self.vertices.to_ref())
+    }
+}
+
+impl<M: Copy, V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized> FramedPolygon for MetaPolygon<V, M> {
+    fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
+        Polygon::new(self.vertices.map(|x| x.inner))
     }
 }
 

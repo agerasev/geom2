@@ -1,16 +1,26 @@
 use crate::{
     ArcVertex, Circle, Closed, CopyIterator, Disk, DiskSegment, EPS, FramedPolygon, GenericPolygon,
-    Integrable, Intersect, IntersectTo, Line, LineSegment, Moment, Polygon,
+    Integrable, Intersect, IntersectTo, Line, LineSegment, Meta, MetaPolygon, Moment, Polygon,
+    Unmeta,
 };
 use core::{array::from_fn, f32::consts::PI};
 use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
 
 pub type ArcPolygon<V> = GenericPolygon<V, ArcVertex>;
+pub type MetaArcPolygon<V, M> = GenericPolygon<V, Meta<ArcVertex, M>>;
 
 impl<V: CopyIterator<Item = ArcVertex> + ?Sized> FramedPolygon for ArcPolygon<V> {
     fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
         Polygon::new(self.vertices.map(|arc| arc.point))
+    }
+}
+
+impl<M: Copy, V: CopyIterator<Item = Meta<ArcVertex, M>> + ?Sized> FramedPolygon
+    for MetaArcPolygon<V, M>
+{
+    fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
+        Polygon::new(self.vertices.map(|arc| arc.inner.point))
     }
 }
 
@@ -53,101 +63,10 @@ impl<
 > IntersectTo<Disk, ArcPolygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, disk: &Disk) -> Option<ArcPolygon<W>> {
-        // Clip vertices
-        let_gen!(gen_, {
-            let mut iter = self.vertices();
-            let mut first = None;
-            let mut last = None;
-            let mut prev = match iter.next() {
-                Some(x) => x,
-                None => return,
-            };
-            let mut prev_inside = disk.contains(prev);
-            for v in iter.chain([prev]) {
-                let inside = disk.contains(v);
-                match (prev_inside, inside) {
-                    (true, true) => {
-                        yield_!(ArcVertex {
-                            point: prev,
-                            sagitta: 0.0,
-                        });
-                    }
-                    (true, false) => {
-                        last = Some(disk.edge().intersect(&Line(prev, v)).unwrap_or([prev, v])[1]);
-                        yield_!(ArcVertex {
-                            point: prev,
-                            sagitta: 0.0,
-                        });
-                    }
-                    (false, true) => {
-                        let clip = disk.edge().intersect(&Line(prev, v)).unwrap_or([prev, v])[0];
-                        if let Some(last) = last {
-                            yield_!(ArcVertex {
-                                point: last,
-                                sagitta: disk.radius
-                                    - Line(last, clip).signed_distance(disk.center),
-                            })
-                        } else {
-                            if first.is_none() {
-                                first = Some(clip);
-                            }
-                        }
-                        yield_!(ArcVertex {
-                            point: clip,
-                            sagitta: 0.0,
-                        });
-                    }
-                    (false, false) => match disk.edge().intersect(&LineSegment(prev, v)) {
-                        Some([Some(a), Some(b)]) => {
-                            if let Some(last) = last {
-                                yield_!(ArcVertex {
-                                    point: last,
-                                    sagitta: disk.radius
-                                        - Line(last, a).signed_distance(disk.center),
-                                });
-                            } else {
-                                if first.is_none() {
-                                    first = Some(a);
-                                }
-                            }
-                            yield_!(ArcVertex {
-                                point: a,
-                                sagitta: 0.0,
-                            });
-                            last = Some(b);
-                        }
-                        _ => {}
-                    },
-                };
-                prev_inside = inside;
-                prev = v;
-            }
-            if let (Some(a), Some(b)) = (first, last) {
-                yield_!(ArcVertex {
-                    point: b,
-                    sagitta: disk.radius - Line(b, a).signed_distance(disk.center),
-                });
-            }
-        });
-        let mut iter = gen_.into_iter();
-
-        if let Some(mut prev) = iter.next() {
-            // Deduplicate vertices
-            let iter = iter.chain([prev]).filter_map(|v| {
-                let ret = if (prev.point - v.point).abs().max_element() > EPS {
-                    Some(prev)
-                } else {
-                    None
-                };
-                prev = v;
-                ret
-            });
-            Some(ArcPolygon::<W>::from_iter(iter))
-        } else if self.contains(disk.center) {
-            Some(ArcPolygon::<W>::from_iter(disk.polygon::<2>().vertices()))
-        } else {
-            None
-        }
+        let unmeta: MetaArcPolygon<Unmeta<W>, ()> =
+            Meta::new(Polygon::new(self.vertices.to_ref()), ())
+                .intersect_to(&Meta::new(*disk, ()))?;
+        Some(ArcPolygon::new(unmeta.vertices.0))
     }
 }
 
@@ -157,6 +76,184 @@ impl<
 > IntersectTo<Polygon<V>, ArcPolygon<W>> for Disk
 {
     fn intersect_to(&self, other: &Polygon<V>) -> Option<ArcPolygon<W>> {
+        other.intersect_to(self)
+    }
+}
+
+impl<
+    M: Copy,
+    V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized,
+    W: CopyIterator<Item = Meta<ArcVertex, M>> + FromIterator<Meta<ArcVertex, M>>,
+> IntersectTo<Meta<Disk, M>, MetaArcPolygon<W, M>> for MetaPolygon<V, M>
+{
+    fn intersect_to(&self, disk: &Meta<Disk, M>) -> Option<MetaArcPolygon<W, M>> {
+        // Clip vertices
+        let_gen!(gen_, {
+            let mut iter = self.vertices();
+            let mut first = None;
+            let mut last = None;
+            let mut prev = match iter.next() {
+                Some(x) => x,
+                None => return,
+            };
+            let mut prev_inside = disk.contains(*prev);
+            for curr in iter.chain([prev]) {
+                let inside = disk.contains(*curr);
+                match (prev_inside, inside) {
+                    (true, true) => {
+                        yield_!(Meta::new(
+                            ArcVertex {
+                                point: *prev,
+                                sagitta: 0.0,
+                            },
+                            prev.meta
+                        ));
+                    }
+                    (true, false) => {
+                        last = Some(Meta::new(
+                            disk.inner
+                                .edge()
+                                .intersect(&Line(*prev, *curr))
+                                .unwrap_or([*prev, *curr])[1],
+                            prev.meta,
+                        ));
+                        yield_!(Meta::new(
+                            ArcVertex {
+                                point: *prev,
+                                sagitta: 0.0,
+                            },
+                            prev.meta
+                        ));
+                    }
+                    (false, true) => {
+                        let clip = Meta::new(
+                            disk.inner
+                                .edge()
+                                .intersect(&Line(*prev, *curr))
+                                .unwrap_or([*prev, *curr])[0],
+                            prev.meta,
+                        );
+
+                        if let Some(last) = last {
+                            yield_!(Meta::new(
+                                ArcVertex {
+                                    point: *last,
+                                    sagitta: disk.radius
+                                        - Line(*last, *clip).signed_distance(disk.center),
+                                },
+                                disk.meta
+                            ))
+                        } else {
+                            if first.is_none() {
+                                first = Some(clip);
+                            }
+                        }
+
+                        yield_!(Meta::new(
+                            ArcVertex {
+                                point: *clip,
+                                sagitta: 0.0,
+                            },
+                            clip.meta
+                        ));
+                    }
+                    (false, false) => match disk.inner.edge().intersect(&LineSegment(*prev, *curr))
+                    {
+                        Some([Some(a), Some(b)]) => {
+                            if let Some(last) = last {
+                                yield_!(Meta::new(
+                                    ArcVertex {
+                                        point: *last,
+                                        sagitta: disk.radius
+                                            - Line(*last, a).signed_distance(disk.center),
+                                    },
+                                    disk.meta
+                                ));
+                            } else {
+                                if first.is_none() {
+                                    first = Some(Meta::new(a, prev.meta));
+                                }
+                            }
+                            yield_!(Meta::new(
+                                ArcVertex {
+                                    point: a,
+                                    sagitta: 0.0,
+                                },
+                                prev.meta
+                            ));
+                            last = Some(Meta::new(b, prev.meta));
+                        }
+                        _ => {}
+                    },
+                };
+                prev_inside = inside;
+                prev = curr;
+            }
+            if let (Some(a), Some(b)) = (first, last) {
+                yield_!(Meta::new(
+                    ArcVertex {
+                        point: *b,
+                        sagitta: disk.radius - Line(*b, *a).signed_distance(disk.center),
+                    },
+                    disk.meta
+                ));
+            }
+        });
+        let mut iter = gen_.into_iter();
+
+        if let Some(mut prev) = iter.next() {
+            // Deduplicate vertices
+            let iter = iter.chain([prev]).filter_map(|curr| {
+                let ret = if (prev.point - curr.point).abs().max_element() > EPS {
+                    Some(prev)
+                } else {
+                    None
+                };
+                prev = curr;
+                ret
+            });
+            Some(MetaArcPolygon::<W, M>::from_iter(iter))
+        } else if self.frame().contains(disk.center) {
+            Some(MetaArcPolygon::<W, M>::from_iter(
+                disk.polygon::<2>()
+                    .vertices()
+                    .map(|x| Meta::new(x, disk.meta)),
+            ))
+        } else {
+            None
+        }
+    }
+}
+
+impl<
+    M: Copy,
+    V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized,
+    W: CopyIterator<Item = Meta<ArcVertex, M>> + FromIterator<Meta<ArcVertex, M>>,
+> IntersectTo<MetaPolygon<V, M>, MetaArcPolygon<W, M>> for Meta<Disk, M>
+{
+    fn intersect_to(&self, other: &MetaPolygon<V, M>) -> Option<MetaArcPolygon<W, M>> {
+        other.intersect_to(self)
+    }
+}
+
+impl<
+    M: Copy,
+    V: CopyIterator<Item = Vec2> + ?Sized,
+    W: CopyIterator<Item = Meta<ArcVertex, M>> + FromIterator<Meta<ArcVertex, M>>,
+> IntersectTo<Meta<Disk, M>, MetaArcPolygon<W, M>> for Meta<Polygon<V>, M>
+{
+    fn intersect_to(&self, disk: &Meta<Disk, M>) -> Option<MetaArcPolygon<W, M>> {
+        MetaPolygon::new(self.vertices.map(|x| Meta::new(x, self.meta))).intersect_to(disk)
+    }
+}
+
+impl<
+    M: Copy,
+    V: CopyIterator<Item = Vec2> + ?Sized,
+    W: CopyIterator<Item = Meta<ArcVertex, M>> + FromIterator<Meta<ArcVertex, M>>,
+> IntersectTo<Meta<Polygon<V>, M>, MetaArcPolygon<W, M>> for Meta<Disk, M>
+{
+    fn intersect_to(&self, other: &Meta<Polygon<V>, M>) -> Option<MetaArcPolygon<W, M>> {
         other.intersect_to(self)
     }
 }

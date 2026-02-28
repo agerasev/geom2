@@ -1,6 +1,6 @@
 use crate::{
-    Arc, ArcPolygon, ArcVertex, Closed, DiskSegment, EPS, GenericPolygon, HalfPlane, Integrable,
-    Intersect, Line, LineSegment, Meta, Moment, impl_approx_eq,
+    Arc, ArcPolygon, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line,
+    LineSegment, Meta, MetaArcPolygon, Moment, impl_approx_eq,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -217,8 +217,7 @@ impl Intersect<Disk> for Disk {
 }
 
 impl<M: Copy> Intersect<Meta<Disk, M>> for Meta<Disk, M> {
-    type Output =
-        Either<GenericPolygon<[Meta<ArcVertex, M>; 2], Meta<ArcVertex, M>>, Meta<Disk, M>>;
+    type Output = Either<MetaArcPolygon<[Meta<ArcVertex, M>; 2], M>, Meta<Disk, M>>;
     fn intersect(&self, other: &Meta<Disk, M>) -> Option<Self::Output> {
         // Vector pointing from `self.center` to `other.center`
         let rel_pos = other.center - self.center;
@@ -238,7 +237,7 @@ impl<M: Copy> Intersect<Meta<Disk, M>> for Meta<Disk, M> {
                 // Midpoint of the common chord
                 let m = self.center + dir * self_apothem;
 
-                Some(Either::Left(GenericPolygon::new([
+                Some(Either::Left(MetaArcPolygon::new([
                     Meta::new(
                         ArcVertex {
                             point: m - dir.perp() * h,

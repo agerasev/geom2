@@ -80,11 +80,11 @@ pub use self::{
     arc::{Arc, ArcVertex, DiskSegment},
     circle::{Circle, Disk},
     line::{Line, LineSegment},
-    meta::Meta,
+    meta::{Meta, Unmeta},
     plane::HalfPlane,
     polygon::{
         FramedPolygon, GenericPolygon,
-        circle::ArcPolygon,
+        circle::{ArcPolygon, MetaArcPolygon},
         line::{MetaPolygon, Polygon},
     },
     vertex::{CopyIterator, CopyMap, CopyRef, Edge, Vertex},
