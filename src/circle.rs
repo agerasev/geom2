@@ -1,6 +1,6 @@
 use crate::{
-    Arc, ArcPolygon, ArcVertex, Closed, DiskSegment, EPS, HalfPlane, Integrable, Intersect, Line,
-    LineSegment, Moment, impl_approx_eq,
+    Arc, ArcPolygon, ArcVertex, Closed, DiskSegment, EPS, GenericPolygon, HalfPlane, Integrable,
+    Intersect, Line, LineSegment, Meta, Moment, impl_approx_eq,
 };
 use core::{f32::consts::PI, ops::Deref};
 use either::Either;
@@ -207,6 +207,19 @@ impl Intersect<Disk> for HalfPlane {
 impl Intersect<Disk> for Disk {
     type Output = Either<ArcPolygon<[ArcVertex; 2]>, Disk>;
     fn intersect(&self, other: &Disk) -> Option<Self::Output> {
+        Some(
+            match Meta::new(*self, ()).intersect(&Meta::new(*other, ()))? {
+                Either::Left(poly) => Either::Left(ArcPolygon::new(poly.vertices.map(|x| x.inner))),
+                Either::Right(circle) => Either::Right(circle.inner),
+            },
+        )
+    }
+}
+
+impl<M: Copy> Intersect<Meta<Disk, M>> for Meta<Disk, M> {
+    type Output =
+        Either<GenericPolygon<[Meta<ArcVertex, M>; 2], Meta<ArcVertex, M>>, Meta<Disk, M>>;
+    fn intersect(&self, other: &Meta<Disk, M>) -> Option<Self::Output> {
         // Vector pointing from `self.center` to `other.center`
         let rel_pos = other.center - self.center;
         // Distance between the centers of the circles
@@ -225,15 +238,21 @@ impl Intersect<Disk> for Disk {
                 // Midpoint of the common chord
                 let m = self.center + dir * self_apothem;
 
-                Some(Either::Left(ArcPolygon::new([
-                    ArcVertex {
-                        point: m - dir.perp() * h,
-                        sagitta: self.radius - self_apothem,
-                    },
-                    ArcVertex {
-                        point: m + dir.perp() * h,
-                        sagitta: other.radius - other_apothem,
-                    },
+                Some(Either::Left(GenericPolygon::new([
+                    Meta::new(
+                        ArcVertex {
+                            point: m - dir.perp() * h,
+                            sagitta: self.radius - self_apothem,
+                        },
+                        self.meta,
+                    ),
+                    Meta::new(
+                        ArcVertex {
+                            point: m + dir.perp() * h,
+                            sagitta: other.radius - other_apothem,
+                        },
+                        other.meta,
+                    ),
                 ])))
             } else {
                 // One circle is inside another

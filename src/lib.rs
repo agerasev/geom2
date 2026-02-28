@@ -82,7 +82,11 @@ pub use self::{
     line::{Line, LineSegment},
     meta::Meta,
     plane::HalfPlane,
-    polygon::{FramedPolygon, GenericPolygon, circle::ArcPolygon, line::Polygon},
+    polygon::{
+        FramedPolygon, GenericPolygon,
+        circle::ArcPolygon,
+        line::{MetaPolygon, Polygon},
+    },
     vertex::{CopyIterator, CopyMap, CopyRef, Edge, Vertex},
 };
 

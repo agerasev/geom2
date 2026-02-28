@@ -6,6 +6,7 @@ use genawaiter::{stack::let_gen, yield_};
 use glam::Vec2;
 
 pub type Polygon<V> = GenericPolygon<V, Vec2>;
+pub type MetaPolygon<V, M> = GenericPolygon<V, Meta<Vec2, M>>;
 
 impl<V: CopyIterator<Item = Vec2> + ?Sized> FramedPolygon for Polygon<V> {
     fn frame(&self) -> Polygon<impl CopyIterator<Item = Vec2> + '_> {
@@ -78,7 +79,7 @@ impl<V: CopyIterator<Item = Vec2> + ?Sized, W: CopyIterator<Item = Vec2> + FromI
     IntersectTo<HalfPlane, Polygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, plane: &HalfPlane) -> Option<Polygon<W>> {
-        let unmeta: GenericPolygon<Unmeta<W>, Meta<Vec2, ()>> =
+        let unmeta: MetaPolygon<Unmeta<W>, ()> =
             Meta::new(Polygon::new(self.vertices.to_ref()), ())
                 .intersect_to(&Meta::new(*plane, ()))?;
         Some(Polygon::new(unmeta.vertices.0))
@@ -97,10 +98,9 @@ impl<
     M: Copy,
     V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized,
     W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
-> IntersectTo<Meta<HalfPlane, M>, GenericPolygon<W, Meta<Vec2, M>>>
-    for GenericPolygon<V, Meta<Vec2, M>>
+> IntersectTo<Meta<HalfPlane, M>, MetaPolygon<W, M>> for MetaPolygon<V, M>
 {
-    fn intersect_to(&self, plane: &Meta<HalfPlane, M>) -> Option<GenericPolygon<W, Meta<Vec2, M>>> {
+    fn intersect_to(&self, plane: &Meta<HalfPlane, M>) -> Option<MetaPolygon<W, M>> {
         // Clip vertices
         let_gen!(gen_, {
             let mut iter = self.vertices();
@@ -165,7 +165,7 @@ impl<
                 prev = curr;
                 ret
             });
-            Some(GenericPolygon::<W, Meta<Vec2, M>>::from_iter(iter))
+            Some(MetaPolygon::<W, M>::from_iter(iter))
         } else {
             None
         }
@@ -176,13 +176,9 @@ impl<
     M: Copy,
     V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized,
     W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
-> IntersectTo<GenericPolygon<V, Meta<Vec2, M>>, GenericPolygon<W, Meta<Vec2, M>>>
-    for Meta<HalfPlane, M>
+> IntersectTo<MetaPolygon<V, M>, MetaPolygon<W, M>> for Meta<HalfPlane, M>
 {
-    fn intersect_to(
-        &self,
-        other: &GenericPolygon<V, Meta<Vec2, M>>,
-    ) -> Option<GenericPolygon<W, Meta<Vec2, M>>> {
+    fn intersect_to(&self, other: &MetaPolygon<V, M>) -> Option<MetaPolygon<W, M>> {
         other.intersect_to(self)
     }
 }
@@ -191,10 +187,10 @@ impl<
     M: Copy,
     V: CopyIterator<Item = Vec2> + ?Sized,
     W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
-> IntersectTo<Meta<HalfPlane, M>, GenericPolygon<W, Meta<Vec2, M>>> for Meta<Polygon<V>, M>
+> IntersectTo<Meta<HalfPlane, M>, MetaPolygon<W, M>> for Meta<Polygon<V>, M>
 {
-    fn intersect_to(&self, plane: &Meta<HalfPlane, M>) -> Option<GenericPolygon<W, Meta<Vec2, M>>> {
-        GenericPolygon::new(self.vertices.map(|v| Meta::new(v, self.meta))).intersect_to(plane)
+    fn intersect_to(&self, plane: &Meta<HalfPlane, M>) -> Option<MetaPolygon<W, M>> {
+        MetaPolygon::new(self.vertices.map(|v| Meta::new(v, self.meta))).intersect_to(plane)
     }
 }
 
@@ -202,12 +198,9 @@ impl<
     M: Copy,
     V: CopyIterator<Item = Vec2> + ?Sized,
     W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
-> IntersectTo<Meta<Polygon<V>, M>, GenericPolygon<W, Meta<Vec2, M>>> for Meta<HalfPlane, M>
+> IntersectTo<Meta<Polygon<V>, M>, MetaPolygon<W, M>> for Meta<HalfPlane, M>
 {
-    fn intersect_to(
-        &self,
-        other: &Meta<Polygon<V>, M>,
-    ) -> Option<GenericPolygon<W, Meta<Vec2, M>>> {
+    fn intersect_to(&self, other: &Meta<Polygon<V>, M>) -> Option<MetaPolygon<W, M>> {
         other.intersect_to(self)
     }
 }
@@ -219,14 +212,47 @@ impl<
 > IntersectTo<Polygon<U>, Polygon<W>> for Polygon<V>
 {
     fn intersect_to(&self, other: &Polygon<U>) -> Option<Polygon<W>> {
-        let mut result = Polygon::from_iter(self.vertices());
+        let unmeta: MetaPolygon<Unmeta<W>, ()> =
+            Meta::new(Polygon::new(self.vertices.to_ref()), ())
+                .intersect_to(&Meta::new(Polygon::new(other.vertices.to_ref()), ()))?;
+        Some(Polygon::new(unmeta.vertices.0))
+    }
+}
+
+impl<
+    M: Copy,
+    U: CopyIterator<Item = Meta<Vec2, M>> + ?Sized,
+    V: CopyIterator<Item = Meta<Vec2, M>> + ?Sized,
+    W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
+> IntersectTo<MetaPolygon<U, M>, MetaPolygon<W, M>> for MetaPolygon<V, M>
+{
+    fn intersect_to(&self, other: &MetaPolygon<U, M>) -> Option<MetaPolygon<W, M>> {
+        let mut result = MetaPolygon::from_iter(self.vertices());
 
         // Sutherland-Hodgman polygon clipping algorithm
-        for LineSegment(a, b) in other.edges() {
-            let plane = HalfPlane::from_edge(Line(a, b));
+        for Meta {
+            inner: LineSegment(a, b),
+            meta: other_meta,
+        } in other.edges()
+        {
+            let plane = Meta::new(HalfPlane::from_edge(Line(a, b)), other_meta);
             result = result.intersect_to(&plane)?;
         }
 
         Some(result)
+    }
+}
+
+impl<
+    M: Copy,
+    U: CopyIterator<Item = Vec2> + ?Sized,
+    V: CopyIterator<Item = Vec2> + ?Sized,
+    W: CopyIterator<Item = Meta<Vec2, M>> + FromIterator<Meta<Vec2, M>>,
+> IntersectTo<Meta<Polygon<U>, M>, MetaPolygon<W, M>> for Meta<Polygon<V>, M>
+{
+    fn intersect_to(&self, other: &Meta<Polygon<U>, M>) -> Option<MetaPolygon<W, M>> {
+        MetaPolygon::new(self.vertices.map(|x| Meta::new(x, self.meta))).intersect_to(
+            &MetaPolygon::new(other.vertices.map(|x| Meta::new(x, other.meta))),
+        )
     }
 }
